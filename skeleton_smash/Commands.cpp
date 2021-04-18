@@ -20,6 +20,10 @@ using namespace std;
 #define FUNC_EXIT()
 #endif
 
+/**
+ * helper functions for command line analyzing
+ */
+
 string _ltrim(const std::string& s)
 {
   size_t start = s.find_first_not_of(WHITESPACE);
@@ -96,10 +100,22 @@ BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
 
 ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
+/**
+ * implementation for Built-in commands
+ */
+
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ShowPidCommand::execute() {
+    pid_t pid = SmallShell::getInstance().get_pid();
+    cout << "smash pid is " << pid << endl;
+}
+
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line) {
     this->plastPwd = plastPwd;
 }
 
+// TODO: handle errors properly
 void ChangeDirCommand::execute() {
     if (this->commandPartsNum != 2)
         cout << "handle: \"smash error: cd: too many arguments\"" << endl;
@@ -131,18 +147,8 @@ void ChangeDirCommand::execute() {
     }
 }
 
-ShowPidCommand::ShowPidCommand(const string &cmd_line) : BuiltInCommand(cmd_line) {
-}
-
-void ShowPidCommand::execute() {
-  pid_t pid = SmallShell::getInstance().get_pid;
-  cout << "smash pid is " << pid << endl;
-}
-
-QuitCommand::QuitCommand(c QuitCommandonst char* cmd_line, JobsList* jobs): 
-BuiltInCommand(cmd_line), job_list(jobs)
-{
-}
+QuitCommand::QuitCommand(const char* cmd_line, JobsList* jobs):
+BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void QuitCommand::execute() {
     if (strcmp(this->commandParts[1],"kill")==0) {
@@ -151,6 +157,15 @@ void QuitCommand::execute() {
     }
     exit(0);
 }
+
+/**
+ * implementation for External commands
+ */
+
+
+/**
+ * implementation for SmallShell
+ */
 
 SmallShell::SmallShell() {
 // TODO: add your implementation

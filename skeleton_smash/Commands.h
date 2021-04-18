@@ -75,7 +75,7 @@ class GetCurrDirCommand : public BuiltInCommand {
 class ShowPidCommand : public BuiltInCommand {
  public:
   explicit ShowPidCommand(const char* cmd_line);
-  ~ShowPidCommand() override = default {}
+  ~ShowPidCommand() override = default;
   void execute() override;
 };
 
@@ -84,8 +84,8 @@ class QuitCommand : public BuiltInCommand {
   private:
     JobsList *job_list;
 // TODO: Add your data members public:
-  explicit(c QuitCommandonst char* cmd_line, JobsList* jobs);
-  ~QuitCommand() override = default {}
+  explicit QuitCommand (const char* cmd_line, JobsList* jobs);
+  ~QuitCommand() override = default;
   void execute() override;
 };
 
