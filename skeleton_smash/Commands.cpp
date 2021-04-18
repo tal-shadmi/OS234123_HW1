@@ -116,3 +116,11 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
+
+string SmallShell::getPromptName() {
+    return this->promptName;
+}
+
+void SmallShell::setPromptName(string &newPromptName) {
+    this->promptName = newPromptName;
+}

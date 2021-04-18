@@ -4,7 +4,9 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "C:/Users/Dell/CLionProjects/OS234123-HW1/main.cpp" "C:/Users/Dell/CLionProjects/OS234123-HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/main.cpp.obj"
+  "C:/Users/Dell/Documents/GitHub/OS234123_HW1/skeleton_smash/Commands.cpp" "C:/Users/Dell/Documents/GitHub/OS234123_HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.obj"
+  "C:/Users/Dell/Documents/GitHub/OS234123_HW1/skeleton_smash/signals.cpp" "C:/Users/Dell/Documents/GitHub/OS234123_HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.obj"
+  "C:/Users/Dell/Documents/GitHub/OS234123_HW1/skeleton_smash/smash.cpp" "C:/Users/Dell/Documents/GitHub/OS234123_HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.obj"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 

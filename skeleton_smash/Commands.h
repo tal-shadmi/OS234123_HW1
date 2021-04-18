@@ -2,14 +2,22 @@
 #define SMASH_COMMAND_H_
 
 #include <vector>
+#include <list>
+#include <time.h>
+
+using namespace std;
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
 class Command {
-// TODO: Add your data members
+ // TODO: Add your data members
+ protected:
+  string commandName;
+  vector<string> args;
+
  public:
-  Command(const char* cmd_line);
+  explicit Command(const char* cmd_line);
   virtual ~Command();
   virtual void execute() = 0;
   //virtual void prepare();
@@ -19,13 +27,13 @@ class Command {
 
 class BuiltInCommand : public Command {
  public:
-  BuiltInCommand(const char* cmd_line);
+  explicit BuiltInCommand(const char* cmd_line);
   virtual ~BuiltInCommand() {}
 };
 
 class ExternalCommand : public Command {
  public:
-  ExternalCommand(const char* cmd_line);
+  explicit ExternalCommand(const char* cmd_line);
   virtual ~ExternalCommand() {}
   void execute() override;
 };
@@ -33,7 +41,7 @@ class ExternalCommand : public Command {
 class PipeCommand : public Command {
   // TODO: Add your data members
  public:
-  PipeCommand(const char* cmd_line);
+  explicit PipeCommand(const char* cmd_line);
   virtual ~PipeCommand() {}
   void execute() override;
 };
@@ -50,21 +58,21 @@ class RedirectionCommand : public Command {
 
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd);
+  explicit ChangeDirCommand(const char* cmd_line, char** plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
  public:
-  GetCurrDirCommand(const char* cmd_line);
+  explicit GetCurrDirCommand(const char* cmd_line);
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
 
 class ShowPidCommand : public BuiltInCommand {
  public:
-  ShowPidCommand(const char* cmd_line);
+  explicit ShowPidCommand(const char* cmd_line);
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
@@ -72,7 +80,7 @@ class ShowPidCommand : public BuiltInCommand {
 class JobsList;
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
-  QuitCommand(const char* cmd_line, JobsList* jobs);
+  explicit QuitCommand(const char* cmd_line, JobsList* jobs);
   virtual ~QuitCommand() {}
   void execute() override;
 };
@@ -84,8 +92,27 @@ class JobsList {
  public:
   class JobEntry {
    // TODO: Add your data members
+   Command command;
+   class Process{
+       int PID;
+       time_t runningTime;
+    public:
+       Process();
+       ~Process();
+       int getPID();
+       time_t getRunningTime();
+       void changeRunStatus();
+   };
+   Process process;
+   int jobId;
+   bool isStopped;
+   bool onForeground;
+   /*
+    * TODO: need to add signals table and running status (finished execution or not)
+    */
   };
  // TODO: Add your data members
+  list<JobEntry> jobs;
  public:
   JobsList();
   ~JobsList();
@@ -103,7 +130,7 @@ class JobsList {
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  JobsCommand(const char* cmd_line, JobsList* jobs);
+  explicit JobsCommand(const char* cmd_line, JobsList* jobs);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -111,7 +138,7 @@ class JobsCommand : public BuiltInCommand {
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  KillCommand(const char* cmd_line, JobsList* jobs);
+  explicit KillCommand(const char* cmd_line, JobsList* jobs);
   virtual ~KillCommand() {}
   void execute() override;
 };
@@ -119,7 +146,7 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  ForegroundCommand(const char* cmd_line, JobsList* jobs);
+  explicit ForegroundCommand(const char* cmd_line, JobsList* jobs);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -143,6 +170,10 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
+  JobsList jobs;
+  string promptName;
+  int PID;
+  string path;
   SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);
@@ -157,6 +188,8 @@ class SmallShell {
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
+  string getPromptName();
+  void setPromptName(string &newPromptName);
 };
 
 #endif //SMASH_COMMAND_H_
