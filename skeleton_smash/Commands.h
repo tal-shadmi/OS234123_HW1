@@ -12,9 +12,8 @@ using namespace std;
 
 class Command {
  // TODO: Add your data members
- protected:
-  string commandName;
-  vector<string> args;
+protected:
+  char** commandParts;
 
  public:
   explicit Command(const char* cmd_line);
@@ -58,6 +57,7 @@ class RedirectionCommand : public Command {
 
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members public:
+  char** plastPwd;
   explicit ChangeDirCommand(const char* cmd_line, char** plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
@@ -174,6 +174,7 @@ class SmallShell {
   string promptName;
   int PID;
   string path;
+  string lastPath;
   SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);

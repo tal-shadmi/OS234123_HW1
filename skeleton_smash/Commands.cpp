@@ -75,7 +75,31 @@ void _removeBackgroundSign(char* cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h 
+// TODO: Add your implementation for classes in Commands.h
+
+Command::Command(const char *cmd_line) {
+    char* new_cmd_line;
+    strcpy(new_cmd_line, cmd_line);
+    _removeBackgroundSign(new_cmd_line);
+    this->commandParts = new char* [COMMAND_MAX_ARGS + 1];
+    _parseCommandLine(new_cmd_line, commandParts);
+}
+
+Command::~Command() {
+    for (int i=0; i<sizeof(this->commandParts); i++){
+        delete this->commandParts[i];
+    }
+    delete[] this->commandParts;
+}
+
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
+
+ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
+
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) {
+    cmd_line = cmd_line;
+    plastPwd = plastPwd;
+}
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
