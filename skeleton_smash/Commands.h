@@ -73,15 +73,17 @@ class GetCurrDirCommand : public BuiltInCommand {
 class ShowPidCommand : public BuiltInCommand {
  public:
   explicit ShowPidCommand(const char* cmd_line);
-  virtual ~ShowPidCommand() {}
+  ~ShowPidCommand() override = default {}
   void execute() override;
 };
 
 class JobsList;
 class QuitCommand : public BuiltInCommand {
+  private:
+    JobsList *job_list;
 // TODO: Add your data members public:
-  explicit QuitCommand(const char* cmd_line, JobsList* jobs);
-  virtual ~QuitCommand() {}
+  explicit(c QuitCommandonst char* cmd_line, JobsList* jobs);
+  ~QuitCommand() override = default {}
   void execute() override;
 };
 
@@ -191,6 +193,7 @@ class SmallShell {
   // TODO: add extra methods as needed
   string getPromptName();
   void setPromptName(string &newPromptName);
+  pid_t get_pid() const;
 };
 
 #endif //SMASH_COMMAND_H_

@@ -101,6 +101,27 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) {
     plastPwd = plastPwd;
 }
 
+ShowPidCommand::ShowPidCommand(const string &cmd_line) : BuiltInCommand(cmd_line) {
+}
+
+void ShowPidCommand::execute() {
+  pid_t pid = SmallShell::getInstance().get_pid;
+  cout << "smash pid is " << pid << endl;
+}
+
+QuitCommand::QuitCommand(c QuitCommandonst char* cmd_line, JobsList* jobs): 
+BuiltInCommand(cmd_line), job_list(jobs)
+{
+}
+
+void QuitCommand::execute() {
+    if (strcmp(this->commandParts[1],"kill")==0) {
+        this->job_list->removeFinishedJobs();//TODO
+        this->job_list->killAllJobs();//TODO
+    }
+    exit(0);
+}
+
 SmallShell::SmallShell() {
 // TODO: add your implementation
 }
@@ -147,4 +168,8 @@ string SmallShell::getPromptName() {
 
 void SmallShell::setPromptName(string &newPromptName) {
     this->promptName = newPromptName;
+}
+
+pid_t SmallShell::get_pid() const {
+    return this->PID;
 }
