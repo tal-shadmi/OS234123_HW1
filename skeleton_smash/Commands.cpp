@@ -82,7 +82,7 @@ Command::Command(const char *cmd_line) {
     strcpy(new_cmd_line, cmd_line);
     _removeBackgroundSign(new_cmd_line);
     this->commandParts = new char* [COMMAND_MAX_ARGS + 1];
-    _parseCommandLine(new_cmd_line, commandParts);
+    this->commandPartsNum = _parseCommandLine(new_cmd_line, commandParts);
 }
 
 Command::~Command() {
@@ -96,9 +96,39 @@ BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
 
 ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
-ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) {
-    cmd_line = cmd_line;
-    plastPwd = plastPwd;
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line) {
+    this->plastPwd = plastPwd;
+}
+
+void ChangeDirCommand::execute() {
+    if (this->commandPartsNum != 2)
+        cout << "handle: \"smash error: cd: too many arguments\"" << endl;
+    else if (this->plastPwd == nullptr)
+        cout << "handle: \"smash error: cd: OLDPWD not set\"" << endl;
+    else if (string(this->commandParts[1]) == "-"){
+        char* cwd = new char[COMMAND_ARGS_MAX_LENGTH];
+        getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
+        if (chdir(*this->plastPwd)){
+            cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\"" << endl;
+        }
+        strcpy(*this->plastPwd, cwd);
+    }
+    else if (string(this->commandParts[1]) == ".."){
+        char* cwd = new char[COMMAND_ARGS_MAX_LENGTH];
+        getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
+        string path = string(this->commandParts[1]);
+        unsigned int last_file_start_pos = path.find_last_of('/');
+        string new_path = path.substr(0, last_file_start_pos);
+        if (chdir(new_path.c_str()) == -1){
+            cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\"" << endl;
+        }
+        strcpy(*this->plastPwd, cwd);
+    }
+    else {
+        if (chdir(this->commandParts[1]) == -1){
+            cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\"" << endl;
+        }
+    }
 }
 
 ShowPidCommand::ShowPidCommand(const string &cmd_line) : BuiltInCommand(cmd_line) {

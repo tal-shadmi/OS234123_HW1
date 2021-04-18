@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <time.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -14,6 +15,7 @@ class Command {
  // TODO: Add your data members
 protected:
   char** commandParts;
+  int commandPartsNum;
 
  public:
   explicit Command(const char* cmd_line);
