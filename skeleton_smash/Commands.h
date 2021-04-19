@@ -5,6 +5,7 @@
 #include <list>
 #include <time.h>
 #include <unistd.h>
+#include <map>
 
 using namespace std;
 
@@ -14,11 +15,17 @@ using namespace std;
 class Command {
  // TODO: Add your data members
 protected:
-  char** commandParts;
+  char ** commandParts;
   int commandPartsNum;
+  char ** commandName;
+  int pid = -1;
+  time_t runningTime = 0;
+  bool isStopped = false;
+  bool onForeground;
+
 
  public:
-  explicit Command(const char* cmd_line);
+  explicit Command(const char* cmd_line , bool isStopped = false);
   virtual ~Command();
   virtual void execute() = 0;
   //virtual void prepare();
@@ -97,29 +104,19 @@ class JobsList {
   class JobEntry {
    // TODO: Add your data members
    Command command;
-   class Process{
-       int PID;
-       time_t runningTime;
-    public:
-       Process();
-       ~Process();
-       int getPID();
-       time_t getRunningTime();
-       void changeRunStatus();
-   };
-   Process process;
    int jobId;
-   bool isStopped;
-   bool onForeground;
-   /*
+   public :
+     JobEntry(Command* cmd);
+     ~JobEntry();
+     /*
     * TODO: need to add signals table and running status (finished execution or not)
     */
   };
- // TODO: Add your data members
-  list<JobEntry> jobs;
+  map<int,JobEntry> jobs;
+  map<pid_t,int> jobs_id_by_pid;
  public:
   JobsList();
-  ~JobsList();
+  ~JobsList() = default;
   void addJob(Command* cmd, bool isStopped = false);
   void printJobsList();
   void killAllJobs();

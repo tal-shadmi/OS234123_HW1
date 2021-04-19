@@ -81,12 +81,14 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h
 
-Command::Command(const char *cmd_line) {
-    char* new_cmd_line;
-    strcpy(new_cmd_line, cmd_line);
-    _removeBackgroundSign(new_cmd_line);
+Command::Command(const char *cmd_line) : commandParts(new char* [COMMAND_MAX_ARGS + 1]),
+commandName(new char* [COMMAND_ARGS_MAX_LENGTH+1]) {
+    strcpy(this->commandName, cmd_line);
+    strcpy(this->commandParts, cmd_line);
+    _removeBackgroundSign(this->commandParts);
     this->commandParts = new char* [COMMAND_MAX_ARGS + 1];
-    this->commandPartsNum = _parseCommandLine(new_cmd_line, commandParts);
+    this->commandPartsNum = _parseCommandLine(cmd_line,this->commandParts);
+    this->onForeground = not _isBackgroundComamnd(cmd_line);
 }
 
 Command::~Command() {
@@ -94,6 +96,7 @@ Command::~Command() {
         delete this->commandParts[i];
     }
     delete[] this->commandParts;
+    delete[] this->commandName
 }
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
@@ -161,6 +164,37 @@ void QuitCommand::execute() {
 /**
  * implementation for External commands
  */
+
+
+/**
+ * implementation of jobList
+ */
+  JobsList::JobsList() :jobs (new map<int,JobEntry),jobs_id_by_pid(new map<pid_t,int>) {
+  }
+  void JobsList::addJob(Command* , bool isStopped = false){
+
+    JobEntry job_entry = new JobEntry(cmd);
+    int job_id ;
+    //Command *new_cmd = new Command(new_cmd) 
+    if (jobs->empty())
+    {
+      job_id = 1;
+      }else {
+        job_id = JobsList.rbegin().jobId + 1;
+      }
+      job_entry.jobId = job_id;
+      this->jobs.insert(job_id, job_entry);
+  }
+  void JobsList::printJobsList();
+  void JobsList::killAllJobs();
+  void JobsList::removeFinishedJobs();
+  JobEntry * JobsList::getJobById(int jobId);
+  void JobsList::removeJobById(int jobId);
+  JobEntry * JobsList::getLastJob(int* lastJobId);
+  JobEntry * JobsList::getLastStoppedJob(int *jobId);
+
+
+
 
 
 /**
