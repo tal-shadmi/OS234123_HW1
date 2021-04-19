@@ -20,6 +20,7 @@ protected:
   char *commandName;
   pid_t pid = -1;
   time_t runningTime = 0;
+  time_t startingTime;
   bool isStopped = false;
   bool onForeground;
 
@@ -124,6 +125,8 @@ class JobsList {
   };
   map<int,JobEntry> *all_jobs;
   map<pid_t,int> *jobs_id_by_pid;
+  list<JobEntry> *stopped_jobs;
+
  public:
   JobsList();
   ~JobsList() = default;
@@ -197,12 +200,13 @@ class SmallShell {
     // Instantiated on first use.
     return instance;
   }
-  ~SmallShell();
+  ~SmallShell() = default;
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
   string getPromptName();
   void setPromptName(string &newPromptName);
   pid_t get_pid() const;
+  JobsList * getJobList();
 };
 
 #endif //SMASH_COMMAND_H_

@@ -83,7 +83,7 @@ void _removeBackgroundSign(char* cmd_line) {
 // TODO: Add your implementation for classes in Commands.h
 
 Command::Command(const char *cmd_line, bool isStopped) : commandParts(new char* [COMMAND_MAX_ARGS + 1]),
-commandName(new char [COMMAND_ARGS_MAX_LENGTH+1]) {
+commandName(new char [COMMAND_ARGS_MAX_LENGTH+1]),startingTime(time(nullptr)) {
     char* s;
     strcpy(s,cmd_line);
     strcpy(this->commandName, cmd_line);
@@ -207,17 +207,37 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void ExternalCommand::execute() {
     // TODO: fork is needed
-    char* argv[COMMAND_MAX_ARGS + 2] = {(char*)"bash", (char*)"-c", *this->commandParts};
-    execv("/bin/bash", argv);
+
+    char* argv[sizeof(this->commandParts) + 2];
+    argv[0] = (char*)"bash";
+    argv[1] = (char*)"-c";
+    for (int i = 2; i < sizeof(this->commandParts) + 2; ++i) {
+        argv[i] = this->commandParts[i - 2];
+    }
+    pid_t pid = fork();
+    if(pid==0){//if Son
+        setpgrp();
+        execv("/bin/bash", argv);
+    }
+    else if(pid>0){//if father
+        this->SetPid(pid);
+        int job_id;
+        SmallShell::getInstance().getJobList()->getLastJob(&job_id);
+        SmallShell::getInstance().getJobList()->jobs_id_by_pid->insert(pair<pid_t,int>(pid,job_id));
+
+        wait(nullptr);
+    }
+    else{
+        //error
+    }
 }
 
 /**
  * implementation of jobEntry
  */
 
-JobsList::JobEntry::JobEntry(Command *cmd, int job_id) {
-    this->command = cmd;
-    this->jobId = job_id;
+JobsList::JobEntry::JobEntry(Command *cmd, int job_id):command(cmd),jobId(job_id) {
+
 }
 
 Command* JobsList::JobEntry::getCommand() {
@@ -231,26 +251,28 @@ int JobsList::JobEntry::getJobId() {
 /**
  * implementation of jobList
  */
-  JobsList::JobsList() :jobs (new map<int,JobEntry>),jobs_id_by_pid(new map<pid_t,int>) {}
+  JobsList::JobsList() :all_jobs (new map<int,JobEntry>),jobs_id_by_pid(new map<pid_t,int>) {}
 
   void JobsList::addJob(Command *cmd, bool isStopped) {
 
     int job_id ;
       //Command *new_cmd = new Command(new_cmd)
-      if (jobs->empty())
+      if (all_jobs->empty())
     {
         job_id = 1;
     }else {
-          job_id = jobs->rbegin()->key+1;
+          job_id = all_jobs->rbegin()->first+1;
       }
       //JobEntry *job_entry = new JobEntry(cmd,job_id);
-      pair<int,JobEntry>  element = new pair<int,JobEntry>(job_id,new JobEntry(cmd,job_id));
-      this->jobs->insert(element);
+      pair<int,JobEntry>  *element = new pair<int,JobEntry>(job_id,JobEntry(cmd,job_id));
+      pair<pid_t,int> *pid_element = new pair<pid_t,int>(cmd->GetPid(),job_id);
+      this->all_jobs->insert(*element);
+      this->jobs_id_by_pid->insert(*pid_element);
   }
 
   void JobsList::printJobsList(){
       // delete all finished jobs:
-      for (pair<int, JobEntry> element : *this->jobs){
+      for (pair<int, JobEntry> element : *this->all_jobs){
           if (element.second.getCommand()->IsStopped()) {
               cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
               element.second.getCommand()->GetPid() << " " <<
@@ -268,24 +290,34 @@ int JobsList::JobEntry::getJobId() {
   void JobsList::killAllJobs(){
 
   }
-  void JobsList::removeFinishedJobs(){
 
+  void JobsList::removeFinishedJobs() {
+      pid_t stopped;// = waitpid(-1, nullptr, WNOHANG);
+      while ((stopped=waitpid(-1, nullptr, WNOHANG)) > 0) {
+          int job_to_remove = this->jobs_id_by_pid->find(stopped)->second;
+          this->all_jobs->erase(job_to_remove);
+          this->jobs_id_by_pid->erase(stopped);
+      }
   }
-  JobEntry * JobsList::getJobById(int jobId){
 
-
-
-      return this->jobs[jobId];
-
+  JobsList::JobEntry * JobsList::getJobById(int jobId) {
+      return &this->all_jobs->find(jobId)->second;
   }
-  void JobsList::removeJobById(int jobId){
 
+  void JobsList::removeJobById(int jobId) {
+      pid_t pid = this->all_jobs->find(jobId)->second.getCommand()->GetPid();
+      this->all_jobs->erase(jobId);
+      this->jobs_id_by_pid->erase(pid);
   }
-  JobEntry * JobsList::getLastJob(int* lastJobId){
 
+  JobsList::JobEntry * JobsList::getLastJob(int* lastJobId){
+      *lastJobId = this->all_jobs->end()->first;
+      return &this->all_jobs->end()->second;
   }
-  JobEntry * JobsList::getLastStoppedJob(int *jobId){
 
+  JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId){
+      *jobId = this->stopped_jobs->back().getJobId();
+      return &this->stopped_jobs->back();
   }
 
 /**
@@ -298,10 +330,6 @@ SmallShell::SmallShell() {
     this->promptName = "smash";
     this->pid = getpid();
     this->lastPath = nullptr;
-}
-
-SmallShell::~SmallShell() {
-// TODO: add your implementation
 }
 
 /**
@@ -320,19 +348,19 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new ChangeDirCommand(cmd_line, (char **) this->lastPath.c_str());
     }
     else if (firstWord == "jobs"){
-        return new JobsCommand(cmd_line, &this->jobs);
+        return new JobsCommand(cmd_line,this->jobs);
     }
     else if (firstWord == "kill"){
-        return new KillCommand(cmd_line, &this->jobs);
+        return new KillCommand(cmd_line, this->jobs);
     }
     else if (firstWord == "fg"){
-        return new ForegroundCommand(cmd_line, &this->jobs);
+        return new ForegroundCommand(cmd_line,this->jobs);
     }
     else if (firstWord == "bg"){
-        return new BackgroundCommand(cmd_line, &this->jobs);
+        return new BackgroundCommand(cmd_line, this->jobs);
     }
     else if (firstWord == "quit"){
-        return new QuitCommand(cmd_line, &this->jobs);
+        return new QuitCommand(cmd_line, this->jobs);
     }
     else {
         return new ExternalCommand(cmd_line);
@@ -342,6 +370,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     Command* cmd = CreateCommand(cmd_line);
+    this->jobs->addJob(cmd);
     cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
@@ -356,4 +385,9 @@ void SmallShell::setPromptName(string &newPromptName) {
 
 pid_t SmallShell::get_pid() const {
     return this->pid;
+}
+
+JobsList * SmallShell::getJobList(){
+
+    return this->jobs;
 }
