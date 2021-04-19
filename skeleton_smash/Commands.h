@@ -121,7 +121,7 @@ class JobsList {
     * TODO: need to add signals table and running status (finished execution or not)
     */
   };
-  map<int,JobEntry> *jobs;
+  map<int,JobEntry> *all_jobs;
   map<pid_t,int> *jobs_id_by_pid;
  public:
   JobsList();
