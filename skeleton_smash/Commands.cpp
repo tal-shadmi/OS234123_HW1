@@ -99,20 +99,25 @@ Command::~Command() {
     delete[] this->commandName;
 }
 
-
-BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
-
-ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
-
 /**
  * implementation for Built-in commands
  */
+
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
 
 ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void ShowPidCommand::execute() {
     pid_t pid = SmallShell::getInstance().get_pid();
     cout << "smash pid is " << pid << endl;
+}
+
+GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void GetCurrDirCommand::execute() {
+    char* cwd = new char[COMMAND_ARGS_MAX_LENGTH];
+    getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
+    cout << cwd << endl;
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line) {
@@ -132,6 +137,7 @@ void ChangeDirCommand::execute() {
             cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\"" << endl;
         }
         strcpy(*this->plastPwd, cwd);
+        free(cwd);
     }
     else if (string(this->commandParts[1]) == ".."){
         char* cwd = new char[COMMAND_ARGS_MAX_LENGTH];
@@ -143,6 +149,7 @@ void ChangeDirCommand::execute() {
             cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\"" << endl;
         }
         strcpy(*this->plastPwd, cwd);
+        free(cwd);
     }
     else {
         if (chdir(this->commandParts[1]) == -1){
@@ -166,12 +173,19 @@ void QuitCommand::execute() {
  * implementation for External commands
  */
 
+ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void ExternalCommand::execute() {
+    // TODO: fork is needed
+    char* argv[COMMAND_MAX_ARGS + 2] = {(char*)"bash", (char*)"-c", *this->commandParts};
+    execv("/bin/bash", argv);
+}
 
 /**
  * implementation of jobList
  */
-  JobsList::JobsList() :jobs (new map<int,JobEntry>),jobs_id_by_pid(new map<pid_t,int>) {
-  }
+  JobsList::JobsList() :jobs (new map<int,JobEntry>),jobs_id_by_pid(new map<pid_t,int>) {}
+
   void JobsList::addJob(Command *cmd, bool isStopped) {
 
     int job_id ;
@@ -186,6 +200,8 @@ void QuitCommand::execute() {
       pair<int,JobEntry>  element = new pair<int,JobEntry>(job_id,new JobEntry(cmd,job_id));
       this->jobs->insert(element);
   }
+
+
   void JobsList::printJobsList();
   void JobsList::killAllJobs();
   void JobsList::removeFinishedJobs();
@@ -194,16 +210,16 @@ void QuitCommand::execute() {
   JobEntry * JobsList::getLastJob(int* lastJobId);
   JobEntry * JobsList::getLastStoppedJob(int *jobId);
 
-
-
-
-
 /**
  * implementation for SmallShell
  */
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
+    this->jobs = new JobsList();
+    this->promptName = "smash";
+    this->pid = getpid();
+    this->lastPath = nullptr;
 }
 
 SmallShell::~SmallShell() {
@@ -214,31 +230,41 @@ SmallShell::~SmallShell() {
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
 Command * SmallShell::CreateCommand(const char* cmd_line) {
-	// For example:
-/*
-  string cmd_s = _trim(string(cmd_line));
-  string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
-
-  if (firstWord.compare("pwd") == 0) {
-    return new GetCurrDirCommand(cmd_line);
-  }
-  else if (firstWord.compare("showpid") == 0) {
-    return new ShowPidCommand(cmd_line);
-  }
-  else if ...
-  .....
-  else {
-    return new ExternalCommand(cmd_line);
-  }
-  */
-  return nullptr;
+    string cmd_s = _trim(string(cmd_line));
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    if (firstWord == "showpid") {
+        return new ShowPidCommand(cmd_line);
+    }
+    else if (firstWord == "pwd") {
+        return new GetCurrDirCommand(cmd_line);
+    }
+    else if (firstWord == "cd") {
+        return new ChangeDirCommand(cmd_line, (char **) this->lastPath.c_str());
+    }
+    else if (firstWord == "jobs"){
+        return new JobsCommand(cmd_line, &this->jobs);
+    }
+    else if (firstWord == "kill"){
+        return new KillCommand(cmd_line, &this->jobs);
+    }
+    else if (firstWord == "fg"){
+        return new ForegroundCommand(cmd_line, &this->jobs);
+    }
+    else if (firstWord == "bg"){
+        return new BackgroundCommand(cmd_line, &this->jobs);
+    }
+    else if (firstWord == "quit"){
+        return new QuitCommand(cmd_line, &this->jobs);
+    }
+    else {
+        return new ExternalCommand(cmd_line);
+    }
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  // TODO: Add your implementation here
-  // for example:
-  // Command* cmd = CreateCommand(cmd_line);
-  // cmd->execute();
+    // TODO: Add your implementation here
+    Command* cmd = CreateCommand(cmd_line);
+    cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
@@ -251,5 +277,5 @@ void SmallShell::setPromptName(string &newPromptName) {
 }
 
 pid_t SmallShell::get_pid() const {
-    return this->PID;
+    return this->pid;
 }

@@ -67,6 +67,7 @@ class RedirectionCommand : public Command {
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members public:
   char** plastPwd;
+ public:
   explicit ChangeDirCommand(const char* cmd_line, char** plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
@@ -88,16 +89,14 @@ class ShowPidCommand : public BuiltInCommand {
 
 class JobsList;
 class QuitCommand : public BuiltInCommand {
-  private:
+ private:
     JobsList *job_list;
 // TODO: Add your data members public:
+ public:
   explicit QuitCommand (const char* cmd_line, JobsList* jobs);
   ~QuitCommand() override = default;
   void execute() override;
 };
-
-
-
 
 class JobsList {
  public:
@@ -173,7 +172,7 @@ class SmallShell {
   // TODO: Add your data members
   JobsList jobs;
   string promptName;
-  int PID;
+  int pid;
   string path;
   string lastPath;
   SmallShell();
