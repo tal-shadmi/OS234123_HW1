@@ -224,6 +224,10 @@ Command* JobsList::JobEntry::getCommand() {
     return this->command;
 }
 
+int JobsList::JobEntry::getJobId() {
+    return this->jobId;
+}
+
 /**
  * implementation of jobList
  */

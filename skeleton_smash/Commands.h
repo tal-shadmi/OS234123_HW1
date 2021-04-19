@@ -117,6 +117,7 @@ class JobsList {
      JobEntry(Command* cmd,int job_id);
      ~JobEntry() = default;
      Command* getCommand();
+     int getJobId();
      /*
     * TODO: need to add signals table and running status (finished execution or not)
     */
