@@ -4,6 +4,7 @@
 #include <vector>
 #include <sstream>
 #include <sys/wait.h>
+#include <time.h>
 #include <iomanip>
 #include "Commands.h"
 #define WHITESPACE " "
@@ -211,6 +212,19 @@ void ExternalCommand::execute() {
 }
 
 /**
+ * implementation of jobEntry
+ */
+
+JobsList::JobEntry::JobEntry(Command *cmd, int job_id) {
+    this->command = cmd;
+    this->jobId = job_id;
+}
+
+Command* JobsList::JobEntry::getCommand() {
+    return this->command;
+}
+
+/**
  * implementation of jobList
  */
   JobsList::JobsList() :jobs (new map<int,JobEntry>),jobs_id_by_pid(new map<pid_t,int>) {}
@@ -233,9 +247,20 @@ void ExternalCommand::execute() {
   void JobsList::printJobsList(){
       // delete all finished jobs:
       for (pair<int, JobEntry> element : *this->jobs){
-          int process_status = waitpid();
+          if (element.second.getCommand()->IsStopped()) {
+              cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
+              element.second.getCommand()->GetPid() << " " <<
+              difftime(time(nullptr), element.second.getCommand()->GetRunningTime())
+              << " (stopped)" << endl;
+          }
+          else{
+              cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
+              element.second.getCommand()->GetPid() << " " << difftime(time(nullptr), element.second.getCommand()->GetRunningTime())
+              << endl;
+          }
       }
   };
+
   void JobsList::killAllJobs(){
 
   }

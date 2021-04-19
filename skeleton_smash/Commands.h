@@ -28,7 +28,7 @@ protected:
   explicit Command(const char* cmd_line , bool isStopped = false);
   virtual ~Command();
   virtual void execute() = 0;
-    pid_t GetPid();
+  pid_t GetPid();
   void SetPid(pid_t pid);
   bool IsStopped();
   void SetisStopped(bool stopped);
@@ -111,11 +111,12 @@ class JobsList {
  public:
   class JobEntry {
    // TODO: Add your data members
-   Command command;
+   Command *command;
    int jobId;
    public :
      JobEntry(Command* cmd,int job_id);
-     ~JobEntry();
+     ~JobEntry() = default;
+     Command* getCommand();
      /*
     * TODO: need to add signals table and running status (finished execution or not)
     */
@@ -179,7 +180,7 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
-  JobsList jobs;
+  JobsList *jobs;
   string promptName;
   int pid;
   string path;
