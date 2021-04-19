@@ -1,11 +1,9 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.obj"
-  "CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.obj"
-  "CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.obj"
-  "OS234123_HW1.exe"
-  "OS234123_HW1.exe.manifest"
+  "CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.o"
+  "CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.o"
+  "CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.o"
+  "OS234123_HW1"
   "OS234123_HW1.pdb"
-  "libOS234123_HW1.dll.a"
 )
 
 # Per-language clean rules from dependency scanning.

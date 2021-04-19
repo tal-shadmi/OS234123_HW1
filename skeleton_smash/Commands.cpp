@@ -230,7 +230,6 @@ void ExternalCommand::execute() {
       this->jobs->insert(element);
   }
 
-
   void JobsList::printJobsList(){
       // delete all finished jobs:
       for (pair<int, JobEntry> element : *this->jobs){

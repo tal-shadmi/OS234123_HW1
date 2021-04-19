@@ -4,9 +4,9 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "D:/Desktop/CS/semester5/OperatingSystems/HW1/skeleton_smash/Commands.cpp" "D:/Desktop/CS/semester5/OperatingSystems/HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.obj"
-  "D:/Desktop/CS/semester5/OperatingSystems/HW1/skeleton_smash/signals.cpp" "D:/Desktop/CS/semester5/OperatingSystems/HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.obj"
-  "D:/Desktop/CS/semester5/OperatingSystems/HW1/skeleton_smash/smash.cpp" "D:/Desktop/CS/semester5/OperatingSystems/HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.obj"
+  "/mnt/d/Desktop/CS/semester5/OperatingSystems/HW1/skeleton_smash/Commands.cpp" "/mnt/d/Desktop/CS/semester5/OperatingSystems/HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.o"
+  "/mnt/d/Desktop/CS/semester5/OperatingSystems/HW1/skeleton_smash/signals.cpp" "/mnt/d/Desktop/CS/semester5/OperatingSystems/HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.o"
+  "/mnt/d/Desktop/CS/semester5/OperatingSystems/HW1/skeleton_smash/smash.cpp" "/mnt/d/Desktop/CS/semester5/OperatingSystems/HW1/cmake-build-debug/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
