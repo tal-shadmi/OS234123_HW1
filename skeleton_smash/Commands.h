@@ -17,7 +17,7 @@ class Command {
 protected:
   char ** commandParts;
   int commandPartsNum;
-  char ** commandName;
+  char *commandName;
   int pid = -1;
   time_t runningTime = 0;
   bool isStopped = false;
@@ -106,14 +106,14 @@ class JobsList {
    Command command;
    int jobId;
    public :
-     JobEntry(Command* cmd);
+     JobEntry(Command* cmd,int job_id);
      ~JobEntry();
      /*
     * TODO: need to add signals table and running status (finished execution or not)
     */
   };
-  map<int,JobEntry> jobs;
-  map<pid_t,int> jobs_id_by_pid;
+  map<int,JobEntry> *jobs;
+  map<pid_t,int> *jobs_id_by_pid;
  public:
   JobsList();
   ~JobsList() = default;

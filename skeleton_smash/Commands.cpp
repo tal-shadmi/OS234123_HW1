@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
-
+#define WHITESPACE " "
 using namespace std;
 
 #if 0
@@ -81,13 +81,13 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h
 
-Command::Command(const char *cmd_line) : commandParts(new char* [COMMAND_MAX_ARGS + 1]),
-commandName(new char* [COMMAND_ARGS_MAX_LENGTH+1]) {
+Command::Command(const char *cmd_line, bool isStopped) : commandParts(new char* [COMMAND_MAX_ARGS + 1]),
+commandName(new char [COMMAND_ARGS_MAX_LENGTH+1]) {
+    char* s;
+    strcpy(s,cmd_line);
     strcpy(this->commandName, cmd_line);
-    strcpy(this->commandParts, cmd_line);
-    _removeBackgroundSign(this->commandParts);
-    this->commandParts = new char* [COMMAND_MAX_ARGS + 1];
-    this->commandPartsNum = _parseCommandLine(cmd_line,this->commandParts);
+    _removeBackgroundSign(s);
+    this->commandPartsNum = _parseCommandLine(s,this->commandParts);// commandParts without '&' sign.
     this->onForeground = not _isBackgroundComamnd(cmd_line);
 }
 
@@ -96,8 +96,9 @@ Command::~Command() {
         delete this->commandParts[i];
     }
     delete[] this->commandParts;
-    delete[] this->commandName
+    delete[] this->commandName;
 }
+
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line){}
 
@@ -169,21 +170,21 @@ void QuitCommand::execute() {
 /**
  * implementation of jobList
  */
-  JobsList::JobsList() :jobs (new map<int,JobEntry),jobs_id_by_pid(new map<pid_t,int>) {
+  JobsList::JobsList() :jobs (new map<int,JobEntry>),jobs_id_by_pid(new map<pid_t,int>) {
   }
-  void JobsList::addJob(Command* , bool isStopped = false){
+  void JobsList::addJob(Command *cmd, bool isStopped) {
 
-    JobEntry job_entry = new JobEntry(cmd);
     int job_id ;
-    //Command *new_cmd = new Command(new_cmd) 
-    if (jobs->empty())
+      //Command *new_cmd = new Command(new_cmd)
+      if (jobs->empty())
     {
-      job_id = 1;
-      }else {
-        job_id = JobsList.rbegin().jobId + 1;
+        job_id = 1;
+    }else {
+          job_id = jobs->rbegin()->key+1;
       }
-      job_entry.jobId = job_id;
-      this->jobs.insert(job_id, job_entry);
+      //JobEntry *job_entry = new JobEntry(cmd,job_id);
+      pair<int,JobEntry>  element = new pair<int,JobEntry>(job_id,new JobEntry(cmd,job_id));
+      this->jobs->insert(element);
   }
   void JobsList::printJobsList();
   void JobsList::killAllJobs();

@@ -1,4 +1,4 @@
-ToolSet: 3.20 (local)@C:\TDM-GCC-32
+ToolSet: 5.3 (local)@C:\MinGW
 Options: 
 
 Options:
