@@ -99,6 +99,35 @@ Command::~Command() {
     delete[] this->commandName;
 }
 
+void Command::SetPid(pid_t pid){
+    this->pid=pid;
+}
+
+bool Command::IsStopped() {
+    return this->isStopped;
+}
+
+void Command::SetisStopped(bool stopped) {
+
+    this->isStopped=stopped;
+}
+
+char *Command::GetCommandName() {
+    return this->commandName;
+}
+
+time_t Command::GetRunningTime() {
+    return this->runningTime;
+}
+
+bool Command::GetonForeground() {
+    return this->onForeground;
+}
+
+pid_t Command::GetPid() {
+    return this->pid;
+}
+
 /**
  * implementation for Built-in commands
  */
@@ -202,13 +231,34 @@ void ExternalCommand::execute() {
   }
 
 
-  void JobsList::printJobsList();
-  void JobsList::killAllJobs();
-  void JobsList::removeFinishedJobs();
-  JobEntry * JobsList::getJobById(int jobId);
-  void JobsList::removeJobById(int jobId);
-  JobEntry * JobsList::getLastJob(int* lastJobId);
-  JobEntry * JobsList::getLastStoppedJob(int *jobId);
+  void JobsList::printJobsList(){
+      // delete all finished jobs:
+      for (pair<int, JobEntry> element : *this->jobs){
+          int process_status = waitpid();
+      }
+  };
+  void JobsList::killAllJobs(){
+
+  }
+  void JobsList::removeFinishedJobs(){
+
+  }
+  JobEntry * JobsList::getJobById(int jobId){
+
+
+
+      return this->jobs[jobId];
+
+  }
+  void JobsList::removeJobById(int jobId){
+
+  }
+  JobEntry * JobsList::getLastJob(int* lastJobId){
+
+  }
+  JobEntry * JobsList::getLastStoppedJob(int *jobId){
+
+  }
 
 /**
  * implementation for SmallShell

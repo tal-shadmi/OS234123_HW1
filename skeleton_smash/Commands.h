@@ -13,12 +13,12 @@ using namespace std;
 #define COMMAND_MAX_ARGS (20)
 
 class Command {
- // TODO: Add your data members
+
 protected:
   char ** commandParts;
   int commandPartsNum;
   char *commandName;
-  int pid = -1;
+  pid_t pid = -1;
   time_t runningTime = 0;
   bool isStopped = false;
   bool onForeground;
@@ -28,6 +28,15 @@ protected:
   explicit Command(const char* cmd_line , bool isStopped = false);
   virtual ~Command();
   virtual void execute() = 0;
+    pid_t GetPid();
+  void SetPid(pid_t pid);
+  bool IsStopped();
+  void SetisStopped(bool stopped);
+  char* GetCommandName();
+  time_t GetRunningTime();
+  bool GetonForeground();
+
+
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
