@@ -6,6 +6,12 @@
 #include "signals.h"
 
 int main(int argc, char* argv[]) {
+
+    if(signal(SIGALRM , alarmHandler)==SIG_ERR) {
+        perror("smash error: failed to set alarm handler");//for alarm handeling
+        return 0;
+    }
+
     if(signal(SIGTSTP , ctrlZHandler)==SIG_ERR) {
         perror("smash error: failed to set ctrl-Z handler");
     }
