@@ -107,7 +107,7 @@ bool Command::IsStopped() {
     return this->isStopped;
 }
 
-void Command::SetisStopped(bool stopped) {
+void Command::SetIsStopped(bool stopped) {
 
     this->isStopped = stopped;
 }
@@ -131,8 +131,12 @@ pid_t Command::GetPid() {
 ostream &operator<<(ostream &os, const Command &command) {//add as a method to print to os
     time_t current = time(nullptr);
     double dif = difftime(current, command.startingTime);
-    os << command.commandName << " : " << command.pid << " " << dif <<" secs";
+    os << command.commandName << " : " << command.pid << " " << dif << " secs";
     return os;
+}
+
+int Command::GetJobId() {
+    return this->job_id;
 }
 
 /**
@@ -272,7 +276,7 @@ void JobsList::JobEntry::set_stopped_status(bool stopped) {
 
 void JobsList::addJob(Command *cmd, bool isStopped) {
     this->removeFinishedJobs();//changed to handle JobEntry diffrent struct
-    int job_id = cmd->get_job_id;
+    int job_id = cmd->GetJobId();
     if (all_jobs.empty()) {
         job_id = 1;
     } else {
@@ -283,16 +287,16 @@ void JobsList::addJob(Command *cmd, bool isStopped) {
     cmd->set_time;
     this->all_jobs.insert(pair<int, JobEntry>(job_id, job_entry));
     this->pid_to_job_id.insert(pair<pid_t, int>
-                                       (je.get_job_command()->get_pid(),
+                                       (job_entry.getCommand()->GetPid(),
                                         job_id));
     if (isStopped) {
-        this->stopped_jobs.insert(pair<int, JobEntry>(job_id, je));
+        this->stopped_jobs.insert(pair<int, JobEntry>(job_id, job_entry));
     }
 }
 
 void JobsList::printJobsList() {
     // delete all finished jobs:
-    for (pair<int, JobEntry> element : *this->all_jobs) {
+    for (pair<int, JobEntry> element : this->all_jobs) {
         if (element.second.getCommand()->IsStopped()) {
             cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
                  element.second.getCommand()->GetPid() << " " <<
@@ -314,31 +318,32 @@ void JobsList::killAllJobs() {
 void JobsList::removeFinishedJobs() {
     pid_t stopped;// = waitpid(-1, nullptr, WNOHANG);
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
-        int job_to_remove = this->jobs_id_by_pid->find(stopped)->second;
-        this->all_jobs->erase(job_to_remove);
-        this->jobs_id_by_pid->erase(stopped);
+        int job_to_remove = this->pid_to_job_id.find(stopped)->second;
+        this->all_jobs.erase(job_to_remove);
+        this->pid_to_job_id.erase(stopped);
     }
 }
 
 JobsList::JobEntry *JobsList::getJobById(int jobId) {
-    return &this->all_jobs->find(jobId)->second;
+    return &this->all_jobs.find(jobId)->second;
 }
 
 void JobsList::removeJobById(int jobId) {
-    pid_t pid = this->all_jobs->find(jobId)->second.getCommand()->GetPid();
-    this->all_jobs->erase(jobId);
-    this->jobs_id_by_pid->erase(pid);
+    pid_t pid = this->all_jobs.find(jobId)->second.getCommand()->GetPid();
+    this->all_jobs.erase(jobId);
+    this->pid_to_job_id.erase(pid);
 }
 
 JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
-    *lastJobId = this->all_jobs->end()->first;
-    return &this->all_jobs->end()->second;
+    *lastJobId = this->all_jobs.rbegin()->first;
+    return &this->all_jobs.rbegin()->second;
 }
 
 JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
-    *jobId = this->stopped_jobs->back().getJobId();
-    return &this->stopped_jobs->back();
+    *jobId = this->stopped_jobs.rbegin()->second.getCommand()->GetJobId();
+    return &this->stopped_jobs.rbegin()->second;
 }
+
 
 /**
  * implementation for SmallShell
@@ -364,7 +369,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return nullptr;
     }
     if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
-                                            //If no matches were found, the function returns string::npos.
+        //If no matches were found, the function returns string::npos.
         return new RedirectionCommand(cmd_line);
     } else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);
@@ -428,7 +433,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     if (!cmd)return;//check if valid
     this->jobs_list->removeFinishedJobs();
     this->jobs_list->addJob(cmd);
-    cmd->execute();
+    cmd->Execute();
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 

@@ -24,7 +24,7 @@ protected:
     char *commandName;
     pid_t pid = 0;
     int job_id = 0; //added job_id to Command class for easier handling with
-                    // command method andjob list hierarchy
+    // command method andjob list hierarchy
     bool isStopped = false;
     bool onForeground;
 
@@ -39,6 +39,8 @@ public:
     friend ostream &operator<<(ostream &os, Command const &command);// so we could print
 
     pid_t GetPid();
+
+    int GetJobId();
 
     void SetPid(pid_t pid);
 
@@ -62,7 +64,8 @@ class BuiltInCommand : public Command {
 public:
     explicit BuiltInCommand(const char *cmd_line);
 
-     ~BuiltInCommand() override = default;//made default {made from simple type var}
+    ~BuiltInCommand() override = default;//made default {made from simple type var}
+
 };
 
 class ExternalCommand : public Command {
@@ -72,7 +75,7 @@ class ExternalCommand : public Command {
 public:
     explicit ExternalCommand(const char *cmd_line);
 
-     ~ExternalCommand() override = default; //made default {made from simple type var}
+    ~ExternalCommand() override = default; //made default {made from simple type var}
 
     void execute() override;
 };
@@ -188,7 +191,7 @@ public:
      * */
 
 public:
-    JobsList() = default ; //made default {made from simple type var}
+    JobsList() = default; //made default {made from simple type var}
 
     ~JobsList() = default;
 
@@ -199,6 +202,7 @@ public:
     void killAllJobs();
 
     void removeFinishedJobs();
+
 
     JobEntry *getJobById(int jobId);
 

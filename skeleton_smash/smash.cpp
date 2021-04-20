@@ -5,24 +5,24 @@
 #include "Commands.h"
 #include "signals.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
-    if(signal(SIGALRM , alarmHandler)==SIG_ERR) {
+    if (signal(SIGALRM, alarmHandler) == SIG_ERR) {
         perror("smash error: failed to set alarm handler");//for alarm handeling
         return 0;
     }
 
-    if(signal(SIGTSTP , ctrlZHandler)==SIG_ERR) {
+    if (signal(SIGTSTP, ctrlZHandler) == SIG_ERR) {
         perror("smash error: failed to set ctrl-Z handler");
     }
-    if(signal(SIGINT , ctrlCHandler)==SIG_ERR) {
+    if (signal(SIGINT, ctrlCHandler) == SIG_ERR) {
         perror("smash error: failed to set ctrl-C handler");
     }
 
     //TODO: setup sig alarm handler
 
-    SmallShell& smash = SmallShell::getInstance();
-    while(true) {
+    SmallShell &smash = SmallShell::getInstance();
+    while (true) {
         // std::cout << "smash> ";
         std::cout << smash.getPromptName() << ">";
         std::string cmd_line;
