@@ -85,12 +85,12 @@ void _removeBackgroundSign(char *cmd_line) {
 Command::Command(const char *cmd_line, bool isStopped) : commandParts(new char *[COMMAND_MAX_ARGS + 1]),
                                                          commandName(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
                                                          startingTime(time(nullptr)) {
-    char *s[];////////////////////////////////
+    char *s[]; // needs decision on how to initialize s
     strcpy(s, cmd_line);
     strcpy(this->commandName, cmd_line);
     _removeBackgroundSign(s);
-    this->commandPartsNum = _parseCommandLine(s, this->commandParts);// commandParts without '&' sign.
-    this->onForeground = not _isBackgroundComamnd(cmd_line);
+    this->command_parts_num = _parseCommandLine(s, this->commandParts); // commandParts without '&' sign.
+    this->on_foreground = not _isBackgroundComamnd(cmd_line);
 }
 
 Command::~Command() {
@@ -101,9 +101,10 @@ Command::~Command() {
     delete[] this->commandName;
 }
 
+// this function should be used for the JobsCommand execute() function
 ostream &operator<<(ostream &os, const Command &command) {//add as a method to print to os
     time_t current = time(nullptr);
-    double dif = difftime(current, command.startingTime);//////////////////////////////////////////////////////////////////////
+    double dif = difftime(current, command.startingTime); // Command has running_time parameter, maybe we should use that?
     os << command.commandName << " : " << command.pid << " " << dif << " secs";
     return os;
 }
@@ -217,11 +218,9 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void JobsCommand::execute() {
-
     this->job_list->removeFinishedJobs();
     this->job_list->printJobsList();
 }
-
 
 QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs) :
         BuiltInCommand(cmd_line), job_list(jobs) {}
@@ -266,10 +265,9 @@ void ExternalCommand::execute() {
     }
 
 }
+
 /*
 void ExternalCommand::execute() {
-    // TODO: fork is needed
-
     char* argv[sizeof(this->commandParts) + 2];
     argv[0] = (char*)"bash";
     argv[1] = (char*)"-c";
@@ -315,11 +313,10 @@ void ListContentsCommand::execute() {
     }
 }
 */
+
 /**
  * implementation of jobEntry
  */
-
-
 
 Command *JobsList::JobEntry::getCommand() {
     return this->command;
@@ -336,6 +333,7 @@ bool JobsList::JobEntry::operator!=(const JobEntry &job_entry) const {
 void JobsList::JobEntry::set_stopped_status(bool stopped) {
     this->is_stopped = stopped;
 }
+
 /*int JobsList::JobEntry::getJobId() {
     return this->jobId;
 }*/
@@ -343,8 +341,6 @@ void JobsList::JobEntry::set_stopped_status(bool stopped) {
 /**
  * implementation of jobList
  */
-
-
 
 void JobsList::addJob(Command *cmd, bool isStopped) {
     this->removeFinishedJobs();//changed to handle JobEntry diffrent struct
@@ -368,6 +364,8 @@ void JobsList::addJob(Command *cmd, bool isStopped) {
 
 void JobsList::printJobsList() {
     // delete all finished jobs:
+    this->removeFinishedJobs();
+    // print all current jobs:
     for (pair<int, JobEntry> element : this->all_jobs) {
         if (element.second.getCommand()->IsStopped()) {
             cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
@@ -416,7 +414,6 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
     return &this->stopped_jobs.rbegin()->second;
 }
 
-
 /**
  * implementation for SmallShell
  */
@@ -432,6 +429,7 @@ SmallShell::SmallShell() {
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
+
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string cmd_s = _trim(string(cmd_line));
     //string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -466,8 +464,6 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else {
         return new ExternalCommand(cmd_line);
     }
-
-
 
 /*
     if (firstWord == "showpid") {
