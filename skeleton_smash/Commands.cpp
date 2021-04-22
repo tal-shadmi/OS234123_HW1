@@ -82,14 +82,14 @@ void _removeBackgroundSign(char *cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h
 
-Command::Command(const char *cmd_line, bool is_stopped) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
+Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
                                                          command_name(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
                                                          starting_time(time(nullptr)) {
-    char *s[]; // needs decision on how to initialize s
+    char *s = new char[sizeof(cmd_line)/sizeof(cmd_line[0])]; // needs decision on how to initialize s
     strcpy(s, cmd_line);
     strcpy(this->command_name, cmd_line);
     _removeBackgroundSign(s);
-    this->command_parts_num = _parseCommandLine(s, this->command_parts); // command_parts without '&' sign.
+    this->command_parts_num = _parseCommandLine(s, this->command_parts); // commandParts without '&' sign.
     this->on_foreground = not _isBackgroundComamnd(cmd_line);
 }
 
@@ -134,12 +134,16 @@ char *Command::GetCommandName() {
     return this->command_name;
 }
 
-time_t Command::GetRunningTime() {
-    return this->runningTime;
+bool Command::GetonForeground() {
+    return this->on_foreground;
 }
 
-bool Command::GetonForeground() {
-    return this->onForeground;
+void Command::SetTime() {
+    this->starting_time = time(nullptr);
+}
+
+time_t Command::GetStartingTime() {
+    return this->starting_time;
 }
 
 /**
@@ -237,7 +241,7 @@ void QuitCommand::execute() {
  * implementation for External commands
  */
 
-ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
+ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line), is_background(_isBackgroundComamnd(cmd_line)) {}
 
 void ExternalCommand::execute() {
     // TODO: fork is needed
@@ -252,9 +256,10 @@ void ExternalCommand::execute() {
     argv[3] = nullptr;
     pid_t pid = fork();// fork to differ father and son
     if (pid == 0) {
-        if (not this->is_child) {
-            setpgrp();
-        }
+        setpgrp();
+//        if (not this->is_child) {
+//            setpgrp();
+//        }
         execv("/bin/bash", argv);
         exit(0);//if reached here all good , if an error was made it will send a signal smash
     } else {
@@ -268,11 +273,11 @@ void ExternalCommand::execute() {
 
 /*
 void ExternalCommand::execute() {
-    char* argv[sizeof(this->command_parts) + 2];
+    char* argv[sizeof(this->commandParts) + 2];
     argv[0] = (char*)"bash";
     argv[1] = (char*)"-c";
-    for (int i = 2; i < sizeof(this->command_parts) + 2; ++i) {
-        argv[i] = this->command_parts[i - 2];
+    for (int i = 2; i < sizeof(this->commandParts) + 2; ++i) {
+        argv[i] = this->commandParts[i - 2];
     }
     pid_t pid = fork();
     if(pid==0){//if Son
@@ -342,7 +347,7 @@ void JobsList::JobEntry::set_stopped_status(bool stopped) {
  * implementation of jobList
  */
 
-void JobsList::addJob(Command *cmd, bool is_stopped) {
+void JobsList::addJob(Command *cmd, bool isStopped) {
     this->removeFinishedJobs();//changed to handle JobEntry diffrent struct
     int job_id = cmd->GetJobId();
     if (all_jobs.empty()) {
@@ -351,13 +356,13 @@ void JobsList::addJob(Command *cmd, bool is_stopped) {
         job_id = all_jobs.rbegin()->first + 1;
     }
     //JobEntry *job_entry = new JobEntry(cmd,job_id);
-    JobEntry job_entry(cmd, is_stopped);
-    cmd->set_time;
+    JobEntry job_entry(cmd, isStopped);
+    cmd->SetTime();
     this->all_jobs.insert(pair<int, JobEntry>(job_id, job_entry));
     this->pid_to_job_id.insert(pair<pid_t, int>
                                        (job_entry.getCommand()->GetPid(),
                                         job_id));
-    if (is_stopped) {
+    if (isStopped) {
         this->stopped_jobs.insert(pair<int, JobEntry>(job_id, job_entry));
     }
 }
@@ -367,17 +372,12 @@ void JobsList::printJobsList() {
     this->removeFinishedJobs();
     // print all current jobs:
     for (pair<int, JobEntry> element : this->all_jobs) {
-        if (element.second.getCommand()->isStopped()) {
-            cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
-                 element.second.getCommand()->GetPid() << " " <<
-                 difftime(time(nullptr), element.second.getCommand()->GetRunningTime())
-                 << " (stopped)" << endl;
-        } else {
-            cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
-                 element.second.getCommand()->GetPid() << " "
-                 << difftime(time(nullptr), element.second.getCommand()->GetRunningTime())
-                 << endl;
+        cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
+        element.second.getCommand()->GetPid() << " " << difftime(time(nullptr), element.second.getCommand()->GetStartingTime());
+        if (element.second.getCommand()->IsStopped()){
+            cout << "(stopped)";
         }
+        cout << endl;
     }
 };
 
@@ -421,9 +421,7 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
 SmallShell::SmallShell() {
 // TODO: add your implementation
     this->jobs_list = new JobsList();
-    this->prompt_name = "smash";
     this->pid = getpid();
-    this-> = nullptr;
 }
 
 /**
@@ -450,7 +448,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (cmd_s.find("pwd") == 0) {
         return new GetCurrDirCommand(cmd_line);
     } else if (cmd_s.find("cd") == 0) {
-        return new ChangeDirCommand(cmd_line, (char **) this->lastPath.c_str());
+        return new ChangeDirCommand(cmd_line, (char **) this->last_path.c_str());
     } else if (cmd_s.find("jobs") == 0) {
         return new JobsCommand(cmd_line, this->jobs_list);
     } else if (cmd_s.find("kill") == 0) {
@@ -506,11 +504,11 @@ void SmallShell::executeCommand(const char *cmd_line) {
 }
 
 string SmallShell::getPromptName() {
-    return this->promptName;
+    return this->prompt_name;
 }
 
 void SmallShell::setPromptName(const char* newPromptName) {
-    this->promptName = newPromptName;
+    this->prompt_name = newPromptName;
 }
 
 pid_t SmallShell::get_pid() const {
@@ -520,10 +518,6 @@ pid_t SmallShell::get_pid() const {
 JobsList *SmallShell::getJobList() {
 
     return this->jobs_list;
-}
-
-string SmallShell::getCurrDir() const {
-    return this->path;
 }
 
 void SmallShell::add_to_job_list(Command *cmd) {

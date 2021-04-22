@@ -18,7 +18,6 @@ class JobsList; //decalared
 
 class Command {
 protected:
-    time_t running_time = 0;
     time_t starting_time = 0;
     char **command_parts;
     int command_parts_num;
@@ -51,10 +50,11 @@ public:
 
     char *GetCommandName();
 
-    time_t GetRunningTime();
-
     bool GetonForeground();
 
+    void SetTime();
+
+    time_t GetStartingTime();
 
     //virtual void prepare();
     //virtual void cleanup();
@@ -70,7 +70,7 @@ public:
 class ExternalCommand : public Command {
     bool is_background;
     string cmd_line;
-    bool is_child;
+    // bool is_child; // need to figure out if needed
 public:
     explicit ExternalCommand(const char *cmd_line);
     ~ExternalCommand() override = default; //made default {made from simple type var}
@@ -238,8 +238,7 @@ private:
     JobsList *jobs_list; // changed from jobs -> jobs_list
     string prompt_name = "smash";//add default starting name
     pid_t pid;
-    string path;
-    //string lastPath;
+    string last_path;
     Command *foreground_cmd = nullptr;//curr command on foreground , for ctrl+c / ctrl+z handlers
 
     SmallShell();
@@ -251,16 +250,15 @@ public:
     static SmallShell &getInstance() // make SmallShell singleton
     {
         static SmallShell instance; // Guaranteed to be destroyed.
-        // Instantiated on first use.
+                                    // Instantiated on first use.
         return instance;
     }
 
     ~SmallShell() = default;
     void executeCommand(const char *cmd_line);
     string getPromptName();
-    string getCurrDir() const;
     void setPromptName(const char* newPromptName);
-    void add_to_job_list(Command *cmd);//just to make it easier to add new jobs
+    void add_to_job_list(Command *cmd); // just to make it easier to add new jobs
     void set_foreground_cmd(Command *cmd = nullptr);
     void stop_foreground();
     void kill_foreground();
