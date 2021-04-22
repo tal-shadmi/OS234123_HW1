@@ -8,7 +8,9 @@
 #include <iomanip>
 #include "Commands.h"
 
-#define WHITESPACE " "
+const char* SMASH_NAME = "smash";
+const string WHITESPACE = " \n\r\t\f\v";
+
 using namespace std;
 
 #if 0
@@ -83,7 +85,7 @@ void _removeBackgroundSign(char *cmd_line) {
 Command::Command(const char *cmd_line, bool isStopped) : commandParts(new char *[COMMAND_MAX_ARGS + 1]),
                                                          commandName(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
                                                          startingTime(time(nullptr)) {
-    char *s;
+    char *s[];////////////////////////////////
     strcpy(s, cmd_line);
     strcpy(this->commandName, cmd_line);
     _removeBackgroundSign(s);
@@ -92,15 +94,30 @@ Command::Command(const char *cmd_line, bool isStopped) : commandParts(new char *
 }
 
 Command::~Command() {
-    for (int i = 0; i < sizeof(this->commandParts); i++) {
+    for (int i = 0; i < this->commandPartsNum; i++) {
         delete this->commandParts[i];
     }
     delete[] this->commandParts;
     delete[] this->commandName;
 }
 
+ostream &operator<<(ostream &os, const Command &command) {//add as a method to print to os
+    time_t current = time(nullptr);
+    double dif = difftime(current, command.startingTime);//////////////////////////////////////////////////////////////////////
+    os << command.commandName << " : " << command.pid << " " << dif << " secs";
+    return os;
+}
+
 void Command::SetPid(pid_t pid) {
     this->pid = pid;
+}
+
+pid_t Command::GetPid() {
+    return this->pid;
+}
+
+int Command::GetJobId() {
+    return this->job_id;
 }
 
 bool Command::IsStopped() {
@@ -124,28 +141,26 @@ bool Command::GetonForeground() {
     return this->onForeground;
 }
 
-pid_t Command::GetPid() {
-    return this->pid;
-}
-
-ostream &operator<<(ostream &os, const Command &command) {//add as a method to print to os
-    time_t current = time(nullptr);
-    double dif = difftime(current, command.startingTime);
-    os << command.commandName << " : " << command.pid << " " << dif << " secs";
-    return os;
-}
-
-int Command::GetJobId() {
-    return this->job_id;
-}
-
 /**
  * implementation for Built-in commands
  */
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {}
 
+ChangePromptCommand::ChangePromptCommand(const char* cmd_line)
+        : BuiltInCommand(cmd_line) {
+}
+
+void ChangePromptCommand::execute() {
+    if (this->commandPartsNum > 1) {
+        SmallShell::getInstance().setPromptName(this->commandParts[1]);
+    } else {
+        SmallShell::getInstance().setPromptName(SMASH_NAME);
+    }
+}
+
 ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
 
 void ShowPidCommand::execute() {
     pid_t pid = SmallShell::getInstance().get_pid();
@@ -199,6 +214,15 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
     }
 }
 
+JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
+
+void JobsCommand::execute() {
+
+    this->job_list->removeFinishedJobs();
+    this->job_list->printJobsList();
+}
+
+
 QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs) :
         BuiltInCommand(cmd_line), job_list(jobs) {}
 
@@ -242,7 +266,55 @@ void ExternalCommand::execute() {
     }
 
 }
+/*
+void ExternalCommand::execute() {
+    // TODO: fork is needed
 
+    char* argv[sizeof(this->commandParts) + 2];
+    argv[0] = (char*)"bash";
+    argv[1] = (char*)"-c";
+    for (int i = 2; i < sizeof(this->commandParts) + 2; ++i) {
+        argv[i] = this->commandParts[i - 2];
+    }
+    pid_t pid = fork();
+    if(pid==0){//if Son
+        setpgrp();
+        execv("/bin/bash", argv);
+    }
+    else if(pid>0){//if father
+        this->SetPid(pid);
+        int job_id;
+        SmallShell::getInstance().getJobList()->getLastJob(&job_id);
+        SmallShell::getInstance().getJobList()->jobs_id_by_pid->insert(pair<pid_t,int>(pid,job_id));
+
+        wait(nullptr);
+    }
+    else{
+        //error
+    }
+}
+*/
+
+
+/*ListContentsCommand::ListContentsCommand(const char* &cmd_line,
+                                         char** cur_dir)
+        : BuiltInCommand(cmd_line), cur_dir(cur_dir) {
+}
+
+void ListContentsCommand::execute() {
+    struct dirent **namelist;
+    int n;
+    n = scandir(this->cur_dir[1], &namelist, NULL, alphasort);
+    if (n > 0) {
+        for (int i = 0; i < n; i++) {
+            string content = namelist[i]->d_name;
+            if (content!="." and content !=".."){
+                cout << namelist[i]->d_name << endl;
+            }
+        }
+    }
+}
+*/
 /**
  * implementation of jobEntry
  */
@@ -431,7 +503,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     Command *cmd = CreateCommand(cmd_line);
     if (!cmd)return;//check if valid
-    this->jobs_list->removeFinishedJobs();
+    //this->jobs_list->removeFinishedJobs();
     this->jobs_list->addJob(cmd);
     cmd->execute();
     // Please note that you must fork smash process for some commands (e.g., external commands....)
@@ -441,7 +513,7 @@ string SmallShell::getPromptName() {
     return this->promptName;
 }
 
-void SmallShell::setPromptName(string &newPromptName) {
+void SmallShell::setPromptName(const char* newPromptName) {
     this->promptName = newPromptName;
 }
 
@@ -476,12 +548,7 @@ void SmallShell::kill_foreground() {
 
 }
 
-JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
-void JobsCommand::execute() {
 
-    this->job_list->removeFinishedJobs();
-    this->job_list->printJobsList();
-}
 
 

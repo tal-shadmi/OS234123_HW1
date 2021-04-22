@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <map>
 #include <unordered_map>
+#include <dirent.h>
 
 using namespace std;
 
@@ -38,11 +39,11 @@ public:
 
     friend ostream &operator<<(ostream &os, Command const &command);// so we could print
 
+    void SetPid(pid_t pid);
+
     pid_t GetPid();
 
     int GetJobId();
-
-    void SetPid(pid_t pid);
 
     bool IsStopped();
 
@@ -124,13 +125,23 @@ public:
 
 class ChangePromptCommand : public BuiltInCommand { //added new class to handle chprompt
 public:
-    explicit ChangePromptCommand(const string &cmd_line);
+    explicit ChangePromptCommand(const char* cmd_line);
 
     ~ChangePromptCommand() override = default;
 
     void execute() override;
 };
 
+/*class ListContentsCommand : public BuiltInCommand {
+    char **cur_dir = nullptr;
+public:
+    explicit ListContentsCommand(const char *&cmd_line, char **cur_dir);
+
+    ~ListContentsCommand() override = default;
+
+    void execute() override;
+};
+*/
 class ShowPidCommand : public BuiltInCommand {
 public:
     explicit ShowPidCommand(const char *cmd_line);
@@ -139,8 +150,6 @@ public:
 
     void execute() override;
 };
-
-class JobsList;
 
 class QuitCommand : public BuiltInCommand {
 private:
@@ -161,8 +170,8 @@ public:
         Command *command;
         bool is_stopped; //changed becasue Command already hold job_id , to make easier to iterate both maps
     public :
-        JobEntry(Command *cmd, bool is_stopped = false) :
-                command(command), is_stopped(is_stopped) {};//add inline
+        explicit JobEntry(Command *cmd, bool is_stopped = false) :
+                command(cmd), is_stopped(is_stopped) {};//add inline
 
         ~JobEntry() = default;
 
@@ -275,7 +284,7 @@ private:
     string promptName = "smash";//add default starting name
     pid_t pid;
     string path;
-    string lastPath;
+    //string lastPath;
     Command *foreground_cmd = nullptr;//curr command on foreground , for ctrl+c / ctrl+z handlers
 
     SmallShell();
@@ -300,7 +309,7 @@ public:
 
     string getCurrDir() const;
 
-    void setPromptName(string &newPromptName);
+    void setPromptName(const char* newPromptName);
 
     void add_to_job_list(Command *cmd);//just to make it easier to add new jobs
 
