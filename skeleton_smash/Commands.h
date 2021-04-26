@@ -50,7 +50,9 @@ public:
 
     char *GetCommandName();
 
-    bool GetonForeground();
+    bool GetOnForeground();
+
+    void SetOnForeground(bool on_foreground);
 
     void SetTime();
 

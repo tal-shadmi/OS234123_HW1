@@ -134,8 +134,12 @@ char *Command::GetCommandName() {
     return this->command_name;
 }
 
-bool Command::GetonForeground() {
+bool Command::GetOnForeground() {
     return this->on_foreground;
+}
+
+void Command::SetOnForeground(bool on_foreground) {
+    this->on_foreground = on_foreground;
 }
 
 void Command::SetTime() {
@@ -364,7 +368,7 @@ void JobsList::addJob(Command *cmd, bool isStopped) {
                                        (job_entry.getCommand()->GetPid(),
                                         job_id));
     if (isStopped) {
-        this->stopped_jobs.insert(pair<int, JobEntry>(job_id, job_entry));
+        this->stopped_jobs.push_back(job_entry.getCommand()->GetPid());
     }
 }
 
@@ -414,6 +418,7 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
     *jobId = this->stopped_jobs.rbegin()->second.getCommand()->GetJobId();
     return &this->stopped_jobs.rbegin()->second;
 }
+
 
 /**
  * implementation for SmallShell
