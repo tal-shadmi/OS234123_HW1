@@ -50,7 +50,9 @@ public:
 
     char *GetCommandName();
 
-    bool GetonForeground();
+    bool GetOnForeground();
+
+    void SetOnForeground(bool on_foreground);
 
     void SetTime();
 
@@ -146,6 +148,50 @@ public:
     void execute() override;
 };
 
+class JobsCommand : public BuiltInCommand {
+private:
+    JobsList *job_list; //added pointer to job_list
+public:
+    explicit JobsCommand(const char *cmd_line, JobsList *jobs);
+    ~JobsCommand() override = default; //made default {made from simple type var}
+    void execute() override;
+};
+
+class KillCommand : public BuiltInCommand {
+private:
+    JobsList *job_list; //added pointer to job_list
+public:
+    explicit KillCommand(const char *cmd_line, JobsList *jobs);
+    virtual ~KillCommand() override = default; //made default {made from simple type var}
+    void execute() override;
+};
+
+class ForegroundCommand : public BuiltInCommand {
+    // TODO: Add your data members
+private:
+    JobsList *job_list;
+public:
+    explicit ForegroundCommand(const char *cmd_line, JobsList *jobs);
+    virtual ~ForegroundCommand() override = default; //made default {made from simple type var}
+    void execute() override;
+};
+
+class BackgroundCommand : public BuiltInCommand {
+private:
+    JobsList *job_list; //added pointer to job_list
+public:
+    BackgroundCommand(const char *cmd_line, JobsList *jobs);
+    virtual ~BackgroundCommand() override = default; //made default {made from simple type var}
+    void execute() override;
+};
+
+class CatCommand : public BuiltInCommand {
+public:
+    CatCommand(const char *cmd_line);
+    virtual ~CatCommand() override = default; //made default {made from simple type var}
+    void execute() override;
+};
+
 class JobsList {
 public:
     class JobEntry {
@@ -188,48 +234,6 @@ public:
     JobEntry *getLastJob(int *lastJobId);
     JobEntry *getLastStoppedJob(int *jobId);
     // TODO: Add extra methods or modify exisitng ones as needed
-};
-
-class JobsCommand : public BuiltInCommand {
-private:
-    JobsList *job_list; //added pointer to job_list
-public:
-    explicit JobsCommand(const char *cmd_line, JobsList *jobs);
-    ~JobsCommand() override = default; //made default {made from simple type var}
-    void execute() override;
-};
-
-class KillCommand : public BuiltInCommand {
-private:
-    JobsList *job_list; //added pointer to job_list
-public:
-    explicit KillCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~KillCommand() override = default; //made default {made from simple type var}
-    void execute() override;
-};
-
-class ForegroundCommand : public BuiltInCommand {
-    // TODO: Add your data members
-public:
-    explicit ForegroundCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~ForegroundCommand() override = default; //made default {made from simple type var}
-    void execute() override;
-};
-
-class BackgroundCommand : public BuiltInCommand {
-private:
-    JobsList *job_list; //added pointer to job_list
-public:
-    BackgroundCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~BackgroundCommand() override = default; //made default {made from simple type var}
-    void execute() override;
-};
-
-class CatCommand : public BuiltInCommand {
-public:
-    CatCommand(const char *cmd_line);
-    virtual ~CatCommand() override = default; //made default {made from simple type var}
-    void execute() override;
 };
 
 
