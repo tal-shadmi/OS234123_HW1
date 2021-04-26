@@ -182,10 +182,8 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
 void ChangePromptCommand::execute() {
 
     if (this->command_parts_num > 1) {
-        //printf("here1");
         SmallShell::getInstance().setPromptName(this->command_parts[1]);
     } else {
-        //printf("here");
         string string1("smash");
         SmallShell::getInstance().setPromptName(string1);
     }
@@ -213,16 +211,17 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : Buil
 
 // TODO: handle errors properly
 void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in the right placed
-    if (this->command_parts_num != 2) {
-        cout << "handle: \"smash error: cd: too many arguments\"" << endl;
+    if (this->command_parts_num == 1){
+        return;
+    } else if (this->command_parts_num > 2) {
+        perror("smash error: cd: too many arguments");
     } else if (this->plastPwd == nullptr) {
-        cout << "handle: \"smash error: cd: OLDPWD not set\"" << endl;
+        perror("smash error: cd: OLDPWD not set");
     } else if (string(this->command_parts[1]) == "-") {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
         getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
-        if (chdir(*this->plastPwd)) {
-            cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\""
-                 << endl;
+        if (chdir(*this->plastPwd) == -1) {
+            perror("smash error: chdir failed");
         }
         delete[] *this->plastPwd;
         *this->plastPwd = cwd ;
@@ -234,16 +233,15 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         unsigned int last_file_start_pos = path.find_last_of('/');
         string new_path = path.substr(0, last_file_start_pos);
         if (chdir(new_path.c_str()) == -1) {
-            cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\""
-                 << endl;
+            perror("smash error: chdir failed");
         }
         delete[] *this->plastPwd;
+        *this->plastPwd = cwd;
         *this->plastPwd = cwd ;
         free(cwd);
     } else {
         if (chdir(this->command_parts[1]) == -1) {
-            cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\""
-                 << endl;
+            perror("smash error: chdir failed");
         }
     }
 }
@@ -363,14 +361,21 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line),
 void ExternalCommand::execute() {
     // TODO: fork is needed
     //build the array and alocate space for each string in the array
-    char *argv[4];
+   /* char *argv[4];
     argv[0] = new char[5];
     strcpy(argv[0], "/bin/bash");
     argv[1] = new char[3];
     strcpy(argv[1], "-c");
     argv[2] = new char[this->cmd_line.size() + 1];
     argv[2] = const_cast<char *>(this->cmd_line.c_str());
-    argv[3] = nullptr;
+    argv[3] = nullptr;*/
+    char* argv[sizeof(this->command_parts) + 2];
+    argv[0] = (char*)"bash";
+    argv[1] = (char*)"-c";
+    for (int i = 2; i < sizeof(this->command_parts) + 2; ++i) {
+        argv[i] = this->command_parts[i - 2];
+    }
+
     pid_t pid = fork();// fork to differ father and son
     if (pid == 0) {
         setpgrp();
@@ -400,6 +405,7 @@ void ExternalCommand::execute() {
     if(pid==0){//if Son
         setpgrp();
         execv("/bin/bash", argv);
+        exit(0);
     }
     else if(pid>0){//if father
         this->SetPid(pid);
