@@ -226,6 +226,12 @@ void JobsCommand::execute() {
     this->job_list->printJobsList();
 }
 
+KillCommand::KillCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line) {}
+
+void KillCommand::execute(){
+
+}
+
 QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs) :
         BuiltInCommand(cmd_line), job_list(jobs) {}
 
@@ -516,7 +522,6 @@ pid_t SmallShell::get_pid() const {
 }
 
 JobsList *SmallShell::getJobList() {
-
     return this->jobs_list;
 }
 
