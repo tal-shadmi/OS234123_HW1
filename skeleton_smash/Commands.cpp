@@ -8,7 +8,7 @@
 #include <iomanip>
 #include "Commands.h"
 
-const char* SMASH_NAME = "smash";
+const char *SMASH_NAME = "smash";
 const string WHITESPACE = " \n\r\t\f\v";
 
 using namespace std;
@@ -85,7 +85,7 @@ void _removeBackgroundSign(char *cmd_line) {
 Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
                                                          command_name(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
                                                          starting_time(time(nullptr)) {
-    char *s = new char[sizeof(cmd_line)/sizeof(cmd_line[0])]; // needs decision on how to initialize s
+    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])]; // needs decision on how to initialize s
     strcpy(s, cmd_line);
     strcpy(this->command_name, cmd_line);
     _removeBackgroundSign(s);
@@ -104,7 +104,8 @@ Command::~Command() {
 // this function should be used for the JobsCommand execute() function
 ostream &operator<<(ostream &os, const Command &command) {//add as a method to print to os
     time_t current = time(nullptr);
-    double dif = difftime(current, command.starting_time); // Command has running_time parameter, maybe we should use that?
+    double dif = difftime(current,
+                          command.starting_time); // Command has running_time parameter, maybe we should use that?
     os << command.command_name << " : " << command.pid << " " << dif << " secs";
     return os;
 }
@@ -156,7 +157,7 @@ time_t Command::GetStartingTime() {
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {}
 
-ChangePromptCommand::ChangePromptCommand(const char* cmd_line)
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
         : BuiltInCommand(cmd_line) {
 }
 
@@ -246,7 +247,8 @@ void QuitCommand::execute() {
  * implementation for External commands
  */
 
-ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line), is_background(_isBackgroundComamnd(cmd_line)) {}
+ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line),
+                                                         is_background(_isBackgroundComamnd(cmd_line)) {}
 
 void ExternalCommand::execute() {
     // TODO: fork is needed
@@ -378,8 +380,9 @@ void JobsList::printJobsList() {
     // print all current jobs:
     for (pair<int, JobEntry> element : this->all_jobs) {
         cout << element.first << " " << element.second.getCommand()->GetCommandName() << " : " <<
-        element.second.getCommand()->GetPid() << " " << difftime(time(nullptr), element.second.getCommand()->GetStartingTime());
-        if (element.second.getCommand()->IsStopped()){
+             element.second.getCommand()->GetPid() << " "
+             << difftime(time(nullptr), element.second.getCommand()->GetStartingTime());
+        if (element.second.getCommand()->IsStopped()) {
             cout << "(stopped)";
         }
         cout << endl;
@@ -394,6 +397,9 @@ void JobsList::removeFinishedJobs() {
     pid_t stopped;// = waitpid(-1, nullptr, WNOHANG);
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
         int job_to_remove = this->pid_to_job_id.find(stopped)->second;
+        if (job_to_remove == SmallShell::getInstance().getForegroundJob()) {
+            SmallShell::getInstance().set_foreground_job(-1);
+        }
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
     }
@@ -512,7 +518,7 @@ string SmallShell::getPromptName() {
     return this->prompt_name;
 }
 
-void SmallShell::setPromptName(const char* newPromptName) {
+void SmallShell::setPromptName(const char *newPromptName) {
     this->prompt_name = newPromptName;
 }
 
@@ -535,12 +541,28 @@ void SmallShell::set_foreground_cmd(Command *cmd) {
     this->foreground_cmd = cmd;
 }
 
-void SmallShell::stop_foreground() {
+int SmallShell::getForegroundJob() {
+    return this->job_on_foreground;
+}
 
+void SmallShell::stop_foreground() {
+    this->jobs_list->removeFinishedJobs();
+    if (this->getForegroundJob() == -1) return;
+    pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->GetPid();
+    this->jobs_list->stopped_jobs.push_back(foreground_pid);
+    this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->SetIsStopped(true);
+    cout << "smash: process" << foreground_pid << "was killed" << endl;
+    kill(pid, SIGSTOP);
 }
 
 void SmallShell::kill_foreground() {
-
+    this->jobs_list->removeFinishedJobs();
+    if (this->getForegroundJob() == -1) return;
+    pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->GetPid();
+    this->jobs_list->stopped_jobs.push_back(foreground_pid);
+    this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->SetIsStopped(true);
+    cout << "smash: process" << foreground_pid << "was stopped" << endl;
+    kill(pid, SIGINT);
 }
 
 
