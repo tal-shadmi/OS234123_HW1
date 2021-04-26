@@ -157,6 +157,7 @@ ChangePromptCommand::ChangePromptCommand(const char* cmd_line)
 }
 
 void ChangePromptCommand::execute() {
+
     if (this->command_parts_num > 1) {
         SmallShell::getInstance().setPromptName(this->command_parts[1]);
     } else {
@@ -497,8 +498,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     Command *cmd = CreateCommand(cmd_line);
     if (!cmd)return;//check if valid
-    //this->jobs_list->removeFinishedJobs();
-    this->jobs_list->addJob(cmd);
+    this->jobs_list->removeFinishedJobs();
     cmd->execute();
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
