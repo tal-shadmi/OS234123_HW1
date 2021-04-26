@@ -70,3 +70,11 @@ cmake-build-debug/Makefile
 cmake-build-debug/OS234123_HW1
 cmake-build-debug/OS234123_HW1.cbp
 cmake-build-debug/Testing/Temporary/LastTest.log
+cmake-build-wsl/OS234123_HW1
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.o
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.o
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.o
+cmake-build-debug/CMakeFiles/3.19.2/CompilerIdCXX/a.exe
+cmake-build-debug/CMakeFiles/3.19.2/CompilerIdC/a.exe
+cmake-build-debug/CMakeFiles/3.19.2/CMakeDetermineCompilerABI_CXX.bin
+cmake-build-debug/CMakeFiles/3.19.2/CMakeDetermineCompilerABI_C.bin

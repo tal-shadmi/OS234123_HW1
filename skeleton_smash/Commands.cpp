@@ -359,38 +359,28 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line),
                                                          is_background(_isBackgroundComamnd(cmd_line)) {}
 
 void ExternalCommand::execute() {
-    // TODO: fork is needed
-    //build the array and alocate space for each string in the array
-   /* char *argv[4];
-    argv[0] = new char[5];
-    strcpy(argv[0], "/bin/bash");
-    argv[1] = new char[3];
-    strcpy(argv[1], "-c");
-    argv[2] = new char[this->cmd_line.size() + 1];
-    argv[2] = const_cast<char *>(this->cmd_line.c_str());
-    argv[3] = nullptr;*/
-    char* argv[sizeof(this->command_parts) + 2];
-    argv[0] = (char*)"bash";
+    char* argv[4];
+    argv[0] = (char*)"/bin/bash";
     argv[1] = (char*)"-c";
-    for (int i = 2; i < sizeof(this->command_parts) + 2; ++i) {
-        argv[i] = this->command_parts[i - 2];
-    }
+    argv[2] = this->command_name;
+    argv[3] = nullptr;
 
     pid_t pid = fork();// fork to differ father and son
-    if (pid == 0) {
+    if (pid == 0) { // child
         setpgrp();
-//        if (not this->is_child) {
-//            setpgrp();
-//        }
-        execv("/bin/bash", argv);
+        execv(argv[0], argv);
         exit(0);//if reached here all good , if an error was made it will send a signal smash
-    } else {
-        if (pid == -1) {//fork failed
-            //error
+    } else { // father
+        if (pid == -1) { // TODO: handle fork failed
         }
-
+        // TODO: maybe we should send a pointer to wait to get the exit status of the child
+        this->SetPid(pid);
+        SmallShell::getInstance().add_to_job_list(this);
+        if (!this->is_background){
+            SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
+            wait(nullptr);
+        }
     }
-
 }
 
 /*
