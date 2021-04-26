@@ -83,7 +83,7 @@ class PipeCommand : public Command {
     // TODO: Add your data members
 public:
     explicit PipeCommand(const char *cmd_line);
-    virtual ~PipeCommand() {}
+    virtual ~PipeCommand() = default;
     void execute() override;
 };
 
@@ -91,7 +91,7 @@ class RedirectionCommand : public Command {
     // TODO: Add your data members
 public:
     explicit RedirectionCommand(const char *cmd_line);
-    virtual ~RedirectionCommand() {}
+    virtual ~RedirectionCommand() = default;
     void execute() override;
     //void prepare() override;
     //void cleanup() override;

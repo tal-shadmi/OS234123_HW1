@@ -157,6 +157,22 @@ time_t Command::GetStartingTime() {
  * implementation for Built-in commands
  */
 
+PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void PipeCommand::execute() {}
+
+/**
+ * implementation for Built-in commands
+ */
+
+RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void RedirectionCommand::execute() {}
+
+/**
+ * implementation for Built-in commands
+ */
+
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {}
 
 ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
