@@ -175,7 +175,7 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
 
 void ShowPidCommand::execute() {
     pid_t pid = SmallShell::getInstance().get_pid();
-    cout << "smash pid is " << pid << endl;
+    cout <<SmallShell::getInstance().getPromptName() << " pid is " << pid << endl;
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
