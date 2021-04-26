@@ -44,6 +44,8 @@ public:
 
     int GetJobId();
 
+    void SetJobId(int new_job_id);
+
     bool IsStopped();
 
     void SetIsStopped(bool stopped);
@@ -211,7 +213,7 @@ public:
        */
     };
 
-    map<int, JobEntry> all_jobs;
+    map<int,JobEntry*> all_jobs;
     list<pid_t> stopped_jobs;
     unordered_map<pid_t, int> pid_to_job_id;
 
