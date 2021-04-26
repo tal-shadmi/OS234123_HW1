@@ -7,6 +7,8 @@
 #include <time.h>
 #include <iomanip>
 #include "Commands.h"
+#include <stdlib.h>
+#include <algorithm>
 
 const char *SMASH_NAME = "smash";
 const string WHITESPACE = " \n\r\t\f\v";
@@ -232,10 +234,91 @@ void JobsCommand::execute() {
     this->job_list->printJobsList();
 }
 
-KillCommand::KillCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line) {}
+KillCommand::KillCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
-void KillCommand::execute(){
+void KillCommand::execute() {
+    // TODO: error handling
+    string job_id(this->command_parts[2]);
+    char *char_part_job_id = nullptr;
+    auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
+    char *char_part_signal = nullptr;
+    string signal(this->command_parts[1]);
+    auto signal_n = strtol(signal.data(), &char_part_signal, 10);
+    if (job_id_n <= 0 || char_part_job_id != nullptr)
+        printf("job_id error");
+    if (-signal_n < 0 || -signal_n > 31 || char_part_signal != nullptr)
+        printf("invalid signal error");
+    map<int, JobsList::JobEntry>::iterator element = this->job_list->all_jobs.find(job_id_n);
+    if (element == this->job_list->all_jobs.end()) {
+        printf("job not found");
+    }
+    pid_t pid = this->job_list->all_jobs.find(job_id_n)->second.getCommand()->GetPid();
+    if (!kill(pid, -signal_n)) {
+        printf("kill failed");
+    }
+}
 
+ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
+
+void ForegroundCommand::execute() {
+    int job_id_n;
+    pid_t pid;
+    if (this->command_parts_num > 1) {
+        string job_id(this->command_parts[1]);
+        char *char_part_job_id = nullptr;
+        job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
+        if (job_id_n <= 0 || char_part_job_id != nullptr)
+            printf("job_id error");
+        auto element = this->job_list->all_jobs.find(job_id_n);
+        if (element == this->job_list->all_jobs.end()) {
+            printf("job not found");
+        }
+        pid = element->second.getCommand()->GetPid();
+    } else {
+        pid = this->job_list->getLastJob(nullptr)->getCommand()->GetPid();
+        job_id_n = this->job_list->pid_to_job_id.find(pid)->second;
+    }
+    SmallShell::getInstance().set_foreground_job(job_id_n);
+    this->job_list->all_jobs.find(job_id_n)->second.getCommand()->SetOnForeground(true);
+    this->job_list->stopped_jobs.remove(pid);
+    SmallShell::getInstance().set_foreground_job(job_id_n);
+    kill(pid, SIGCONT);
+    waitpid(pid, nullptr, WNOHANG);
+}
+
+BackgroundCommand::BackgroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
+
+void BackgroundCommand::execute() {
+    int job_id_n;
+    pid_t pid;
+    bool is_stopped;
+    JobsList::JobEntry *job_entry;
+    if (this->command_parts_num > 1) {
+        string job_id(this->command_parts[1]);
+        char *char_part_job_id = nullptr;
+        auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
+        if (job_id_n <= 0 || char_part_job_id != nullptr)
+            printf("job_id error");
+        auto job_it = this->job_list->all_jobs.find(job_id_n);
+        if (job_it == this->job_list->all_jobs.end()) {
+            printf("smash error: bg: job-id <job-id> does not exist");
+        }
+        is_stopped = job_it->second.getCommand()->IsStopped();
+        if (!is_stopped) {
+            printf("smash error: bg: job-id <job-id> is already running in the background");
+        }
+        job_entry = &job_it->second;
+        pid = job_it->second.getCommand()->GetPid();
+    } else {
+        job_entry = this->job_list->getLastStoppedJob(&job_id_n);
+        if (job_entry == nullptr) {
+            printf("smash error: bg: there is no stopped jobs to resume");
+        }
+        pid = job_entry->getCommand()->GetPid();
+    }
+    this->job_list->stopped_jobs.remove(pid);
+    job_entry->set_stopped_status(false);
+    kill(pid, SIGCONT);
 }
 
 QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs) :
@@ -361,14 +444,13 @@ void JobsList::JobEntry::set_stopped_status(bool stopped) {
  */
 
 void JobsList::addJob(Command *cmd, bool isStopped) {
-    this->removeFinishedJobs();//changed to handle JobEntry diffrent struct
+    // this->removeFinishedJobs(); //changed to handle JobEntry diffrent struct
     int job_id = cmd->GetJobId();
     if (all_jobs.empty()) {
         job_id = 1;
     } else {
         job_id = all_jobs.rbegin()->first + 1;
     }
-    //JobEntry *job_entry = new JobEntry(cmd,job_id);
     JobEntry job_entry(cmd, isStopped);
     cmd->SetTime();
     this->all_jobs.insert(pair<int, JobEntry>(job_id, job_entry));
@@ -427,8 +509,11 @@ JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
 }
 
 JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
-    *jobId = this->stopped_jobs.rbegin()->second.getCommand()->GetJobId();
-    return &this->stopped_jobs.rbegin()->second;
+    if (this->stopped_jobs.empty()) {
+        return nullptr;
+    }
+    *jobId = this->pid_to_job_id.find(this->stopped_jobs.back())->second;
+    return &this->all_jobs.find(*jobId)->second;
 }
 
 
@@ -440,6 +525,7 @@ SmallShell::SmallShell() {
 // TODO: add your implementation
     this->jobs_list = new JobsList();
     this->pid = getpid();
+    this->job_on_foreground = -1 ;
 }
 
 /**
@@ -533,17 +619,17 @@ pid_t SmallShell::get_pid() const {
 }
 
 JobsList *SmallShell::getJobList() {
+
     return this->jobs_list;
 }
 
 void SmallShell::add_to_job_list(Command *cmd) {
 
     this->jobs_list->addJob(cmd);
-
 }
 
-void SmallShell::set_foreground_cmd(Command *cmd) {
-    this->foreground_cmd = cmd;
+void SmallShell::set_foreground_job(int job_id) {
+    this->job_on_foreground = job_id;
 }
 
 int SmallShell::getForegroundJob() {
