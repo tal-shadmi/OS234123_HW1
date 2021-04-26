@@ -212,7 +212,7 @@ public:
     };
 
     map<int, JobEntry> all_jobs;
-    map<int, JobEntry> stopped_jobs;
+    list<pid_t> stopped_jobs;
     unordered_map<pid_t, int> pid_to_job_id;
 
     /*
@@ -243,7 +243,8 @@ private:
     string prompt_name = "smash";//add default starting name
     pid_t pid;
     string last_path;
-    Command *foreground_cmd = nullptr;//curr command on foreground , for ctrl+c / ctrl+z handlers
+    int job_on_foreground; //curr job on foreground , for ctrl+c / ctrl+z handlers
+
 
     SmallShell();
 
@@ -263,7 +264,8 @@ public:
     string getPromptName();
     void setPromptName(const char* newPromptName);
     void add_to_job_list(Command *cmd); // just to make it easier to add new jobs
-    void set_foreground_cmd(Command *cmd = nullptr);
+    void set_foreground_job(int job_id);
+    int getForegroundJob();
     void stop_foreground();
     void kill_foreground();
     pid_t get_pid() const;
