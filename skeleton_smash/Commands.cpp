@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <algorithm>
 
-const char *SMASH_NAME = "smash";
-const string WHITESPACE = " \n\r\t\f\v";
+#define SMASH_NAME  "smash"
+#define WHITESPACE  " \n\r\t\f\v"
 
 using namespace std;
 
@@ -182,9 +182,12 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
 void ChangePromptCommand::execute() {
 
     if (this->command_parts_num > 1) {
+        //printf("here1");
         SmallShell::getInstance().setPromptName(this->command_parts[1]);
     } else {
-        SmallShell::getInstance().setPromptName(SMASH_NAME);
+        //printf("here");
+        string string1("smash");
+        SmallShell::getInstance().setPromptName(string1);
     }
 }
 
@@ -204,7 +207,7 @@ void GetCurrDirCommand::execute() {
     cout << cwd << endl;
 }
 
-ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line) {
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line)  {
     this->plastPwd = plastPwd;
 }
 
@@ -221,7 +224,8 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
             cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\""
                  << endl;
         }
-        strcpy(*this->plastPwd, cwd);
+        delete[] *this->plastPwd;
+        *this->plastPwd = cwd ;
         free(cwd);
     } else if (string(this->command_parts[1]) == "..") {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
@@ -233,7 +237,8 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
             cout << "handle: \"chdir()system call failed (e.g., <path> argument points to a non-existing path)\""
                  << endl;
         }
-        strcpy(*this->plastPwd, cwd);
+        delete[] *this->plastPwd;
+        *this->plastPwd = cwd ;
         free(cwd);
     } else {
         if (chdir(this->command_parts[1]) == -1) {
@@ -499,6 +504,7 @@ void JobsList::killAllJobs() {
 
 void JobsList::removeFinishedJobs() {
     pid_t stopped;// = waitpid(-1, nullptr, WNOHANG);
+    if(this->all_jobs.empty())return;
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
         int job_to_remove = this->pid_to_job_id.find(stopped)->second;
         if (job_to_remove == SmallShell::getInstance().getForegroundJob()) {
@@ -626,7 +632,7 @@ string SmallShell::getPromptName() {
     return this->prompt_name;
 }
 
-void SmallShell::setPromptName(const char *newPromptName) {
+void SmallShell::setPromptName(string newPromptName) {
     this->prompt_name = newPromptName;
 }
 

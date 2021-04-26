@@ -262,7 +262,7 @@ public:
     ~SmallShell() = default;
     void executeCommand(const char *cmd_line);
     string getPromptName();
-    void setPromptName(const char* newPromptName);
+    void setPromptName(string newPromptName);
     void add_to_job_list(Command *cmd); // just to make it easier to add new jobs
     void set_foreground_job(int job_id);
     int getForegroundJob();
