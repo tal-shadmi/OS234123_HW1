@@ -89,8 +89,8 @@ Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char 
                                                          starting_time(time(nullptr)) {
     char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])]; // needs decision on how to initialize s
     strcpy(s, cmd_line);
-    strcpy(this->command_name, cmd_line);
     _removeBackgroundSign(s);
+    strcpy(this->command_name, s);
     this->command_parts_num = _parseCommandLine(s, this->command_parts); // commandParts without '&' sign.
     this->on_foreground = not _isBackgroundComamnd(cmd_line);
 }
@@ -368,13 +368,14 @@ void ExternalCommand::execute() {
     argv[1] = (char*)"-c";
     argv[2] = this->command_name;
     argv[3] = nullptr;
+    //printf("%s",argv[2]);
 
     pid_t pid = fork();// fork to differ father and son
     if (pid == 0) { // child
         setpgrp();
-        pid_t ppid;
+        /*pid_t ppid;
         ppid = getsid(getpid());
-        printf("%d",ppid);
+        printf("%d",ppid);*/
         execv(argv[0], argv);
         exit(0);//if reached here all good , if an error was made it will send a signal smash
     } else { // father
@@ -387,10 +388,10 @@ void ExternalCommand::execute() {
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
             wait(nullptr);
         }
-        pid_t pppid;
+        /*pid_t pppid;
         pppid = getsid(pid);
         printf("\n%d\n",pppid);
-        printf("%d\n",pid);
+        printf("%d\n",pid);*/
     }
 }
 
