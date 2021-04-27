@@ -74,7 +74,6 @@ public:
 class ExternalCommand : public Command {
     bool is_background;
     string cmd_line;
-    // bool is_child; // need to figure out if needed
 public:
     explicit ExternalCommand(const char *cmd_line);
     ~ExternalCommand() override = default; //made default {made from simple type var}
@@ -121,17 +120,6 @@ public:
     ~ChangePromptCommand() override = default;
     void execute() override;
 };
-
-/*class ListContentsCommand : public BuiltInCommand {
-    char **cur_dir = nullptr;
-public:
-    explicit ListContentsCommand(const char *&cmd_line, char **cur_dir);
-
-    ~ListContentsCommand() override = default;
-
-    void execute() override;
-};
-*/
 
 class ShowPidCommand : public BuiltInCommand {
 public:

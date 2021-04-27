@@ -87,7 +87,7 @@ void _removeBackgroundSign(char *cmd_line) {
 Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
                                                          command_name(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
                                                          starting_time(time(nullptr)) {
-    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])]; // needs decision on how to initialize s
+    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])];
     strcpy(s, cmd_line);
     _removeBackgroundSign(s);
     strcpy(this->command_name, cmd_line);
@@ -106,8 +106,7 @@ Command::~Command() {
 // this function should be used for the JobsCommand execute() function
 ostream &operator<<(ostream &os, const Command &command) {//add as a method to print to os
     time_t current = time(nullptr);
-    double dif = difftime(current,
-                          command.starting_time); // Command has running_time parameter, maybe we should use that?
+    double dif = difftime(current, command.starting_time); // Command has running_time parameter, maybe we should use that?
     os << command.command_name << " : " << command.pid << " " << dif << " secs";
     return os;
 }
@@ -184,17 +183,14 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
 }
 
 void ChangePromptCommand::execute() {
-
     if (this->command_parts_num > 1) {
         SmallShell::getInstance().setPromptName(this->command_parts[1]);
     } else {
-        string string1("smash");
-        SmallShell::getInstance().setPromptName(string1);
+        SmallShell::getInstance().setPromptName(SMASH_NAME);
     }
 }
 
 ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
-
 
 void ShowPidCommand::execute() {
     pid_t pid = SmallShell::getInstance().get_pid();
@@ -219,17 +215,21 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         return;
     } else if (this->command_parts_num > 2) {
         perror("smash error: cd: too many arguments");
-    } else if (this->plastPwd == nullptr) {
-        perror("smash error: cd: OLDPWD not set");
+        return;
     } else if (string(this->command_parts[1]) == "-") {
+        if (*this->plastPwd == nullptr) {
+            perror("smash error: cd: OLDPWD not set");
+            return;
+        }
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
         getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
         if (chdir(*this->plastPwd) == -1) {
             perror("smash error: chdir failed");
+            return;
         }
         delete[] *this->plastPwd;
         *this->plastPwd = cwd ;
-        free(cwd);
+        // free(cwd);
     } else if (string(this->command_parts[1]) == "..") {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
         getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
@@ -238,14 +238,15 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         string new_path = path.substr(0, last_file_start_pos);
         if (chdir(new_path.c_str()) == -1) {
             perror("smash error: chdir failed");
+            return;
         }
         delete[] *this->plastPwd;
         *this->plastPwd = cwd;
-        *this->plastPwd = cwd ;
-        free(cwd);
+        // free(cwd);
     } else {
         if (chdir(this->command_parts[1]) == -1) {
             perror("smash error: chdir failed");
+            return;
         }
     }
 }
@@ -371,30 +372,29 @@ void ExternalCommand::execute() {
     argv[1] = (char*)"-c";
     argv[2] = s;
     argv[3] = nullptr;
-    //printf("%s",argv[2]);
 
-    pid_t pid = fork();// fork to differ father and son
+    pid_t pid = fork();// fork to differ father and child
     if (pid == 0) { // child
         setpgrp();
-        /*pid_t ppid;
-        ppid = getsid(getpid());
-        printf("%d",ppid);*/
         execv(argv[0], argv);
-        exit(0);//if reached here all good , if an error was made it will send a signal smash
+        free(s); // added this to avoid memory leak, seems to work just fine
+        exit(0);//if reached here all good, if an error was made it will send a signal smash
     } else { // father
         if (pid == -1) { // TODO: handle fork failed
         }
         // TODO: maybe we should send a pointer to wait to get the exit status of the child
+        // set child pid and add job to the list
         this->SetPid(pid);
         SmallShell::getInstance().add_to_job_list(this);
         if (!this->is_background){
+            // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
             wait(nullptr);
+            // after job finished set back smash to the state before this called command
+            int job_to_remove = SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second;
+            SmallShell::getInstance().set_foreground_job(-1);
+            SmallShell::getInstance().getJobList()->removeJobById(job_to_remove);
         }
-        /*pid_t pppid;
-        pppid = getsid(pid);
-        printf("\n%d\n",pppid);
-        printf("%d\n",pid);*/
     }
 }
 
@@ -426,27 +426,6 @@ void ExternalCommand::execute() {
 }
 */
 
-
-/*ListContentsCommand::ListContentsCommand(const char* &cmd_line,
-                                         char** cur_dir)
-        : BuiltInCommand(cmd_line), cur_dir(cur_dir) {
-}
-
-void ListContentsCommand::execute() {
-    struct dirent **namelist;
-    int n;
-    n = scandir(this->cur_dir[1], &namelist, NULL, alphasort);
-    if (n > 0) {
-        for (int i = 0; i < n; i++) {
-            string content = namelist[i]->d_name;
-            if (content!="." and content !=".."){
-                cout << namelist[i]->d_name << endl;
-            }
-        }
-    }
-}
-*/
-
 /**
  * implementation of jobEntry
  */
@@ -466,10 +445,6 @@ bool JobsList::JobEntry::operator!=(const JobEntry &job_entry) const {
 void JobsList::JobEntry::set_stopped_status(bool stopped) {
     this->is_stopped = stopped;
 }
-
-/*int JobsList::JobEntry::getJobId() {
-    return this->jobId;
-}*/
 
 /**
  * implementation of jobList
@@ -500,9 +475,9 @@ void JobsList::printJobsList() {
     this->removeFinishedJobs();
     // print all current jobs:
     for (pair<int, JobEntry*> element : this->all_jobs) {
-        cout <<"["<< element.first <<"]"<< " " << element.second->getCommand()->GetCommandName() << " : " <<
+        cout << "[" << element.first << "]" << " " << element.second->getCommand()->GetCommandName() << " : " <<
              element.second->getCommand()->GetPid() << " "
-             << difftime(time(nullptr), element.second->getCommand()->GetStartingTime())<<" secs";
+             << difftime(time(nullptr), element.second->getCommand()->GetStartingTime()) << " secs";
         if (element.second->getCommand()->IsStopped()) {
             cout << "(stopped)";
         }
@@ -550,7 +525,6 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
     return this->all_jobs.find(*jobId)->second;
 }
 
-
 /**
  * implementation for SmallShell
  */
@@ -575,7 +549,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return nullptr;
     }
     if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
-        //If no matches were found, the function returns string::npos.
+                                             //If no matches were found, the function returns string::npos.
         return new RedirectionCommand(cmd_line);
     } else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);

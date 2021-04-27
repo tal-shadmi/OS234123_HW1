@@ -123,3 +123,6 @@ cmake-build-debug-coverage/Makefile
 cmake-build-debug-coverage/OS234123_HW1
 cmake-build-debug-coverage/OS234123_HW1.cbp
 cmake-build-debug-coverage/Testing/Temporary/LastTest.log
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.o
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.o
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.o
