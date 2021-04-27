@@ -90,7 +90,7 @@ Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char 
     char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])]; // needs decision on how to initialize s
     strcpy(s, cmd_line);
     _removeBackgroundSign(s);
-    strcpy(this->command_name, s);
+    strcpy(this->command_name, cmd_line);
     this->command_parts_num = _parseCommandLine(s, this->command_parts); // commandParts without '&' sign.
     this->on_foreground = not _isBackgroundComamnd(cmd_line);
 }
@@ -364,9 +364,12 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line),
 
 void ExternalCommand::execute() {
     char* argv[4];
+    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])]; // needs decision on how to initialize s
+    strcpy(s, this->command_name);
+    _removeBackgroundSign(s);
     argv[0] = (char*)"/bin/bash";
     argv[1] = (char*)"-c";
-    argv[2] = this->command_name;
+    argv[2] = s;
     argv[3] = nullptr;
     //printf("%s",argv[2]);
 
