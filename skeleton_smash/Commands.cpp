@@ -280,6 +280,7 @@ void KillCommand::execute() {
     if (!kill(pid, -signal_n)) {
         printf("kill failed");
     }
+
 }
 
 ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
