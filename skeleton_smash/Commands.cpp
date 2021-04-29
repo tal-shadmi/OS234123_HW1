@@ -9,6 +9,9 @@
 #include "Commands.h"
 #include <stdlib.h>
 #include <algorithm>
+#include <stdio.h>
+#include <fstream>
+#include <fcntl.h>
 
 #define SMASH_NAME  "smash"
 #define WHITESPACE  " \n\r\t\f\v"
@@ -157,7 +160,7 @@ time_t Command::GetStartingTime() {
 }
 
 /**
- * implementation for Built-in commands
+ * implementation for PipeCommand commands
  */
 
 PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {}
@@ -165,12 +168,43 @@ PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {}
 void PipeCommand::execute() {}
 
 /**
- * implementation for Built-in commands
+ * implementation for RedirectionCommand commands
  */
 
 RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
 
-void RedirectionCommand::execute() {}
+void RedirectionCommand::execute() {
+    int fd;
+    string cmd(this->command_name);
+    int pos = cmd.find('>');
+    bool is_override = cmd[pos + 1] != '>';
+    int pipes_fd[2];
+    pipe(pipes_fd);
+    // cout would go to
+    dup2(pipes_fd[1], 1);
+    if (is_override) {
+        // opening file with writing access, name as stated in the command
+        int fd = open(this->command_parts[2], O_RDWR | O_CREAT);
+    }
+    else{
+        // opening file with writing access, name as stated in the command and with appending option
+        int fd = open(this->command_parts[2], O_RDWR | O_CREAT | O_APPEND);
+    }
+    if (fork() == 0){
+        dup2(pipes_fd[1], 1);
+        close(pipes_fd[0]);
+        close(pipes_fd[1]);
+        // execute command before ">" or ">>"
+        SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
+    }
+    else{
+        dup2(pipes_fd[0], fd);
+        close(pipes_fd[0]);
+        close(pipes_fd[1]);
+    }
+    close(pipes_fd[0]);
+    close(pipes_fd[1]);
+}
 
 /**
  * implementation for Built-in commands
@@ -386,6 +420,31 @@ void QuitCommand::execute() {
     exit(0);
 }
 
+CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void CatCommand::execute() {
+    if (command_parts_num < 2){
+        perror("smash error: cat: not enough arguments");
+        exit(1);
+    }
+    for (int i=1; i<this->command_parts_num; i++){
+        fstream file;
+        file.open(this->command_parts[i], ios::in);
+        if (!file){
+            perror("smash error: fopen failed");
+            exit(1);
+        }
+        char ch;
+        while (true) {
+            file >> ch;
+            if (file.eof())
+                break;
+            cout << ch;
+        }
+        file.close();
+    }
+}
+
 /**
  * implementation for External commands
  */
@@ -514,7 +573,6 @@ void JobsList::printJobsList() {
 };
 
 void JobsList::killAllJobs() {
-
     int num_of_jobs = this->all_jobs.size();
     cout<<"smash: sending SIGKILL signal to "<<num_of_jobs<<" jobs:"<<endl;
     for_each(this->all_jobs.begin(), this->all_jobs.end(),
@@ -599,7 +657,10 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
                                              //If no matches were found, the function returns string::npos.
         return new RedirectionCommand(cmd_line);
-    } else if (cmd_s.find('|') != string::npos) {
+    } /*else if (cmd_s.find('|') != string::npos) {
+        return new PipeCommand(cmd_line);
+    }*/
+    else if (cmd_s.find("cat") == 0){
         return new PipeCommand(cmd_line);
     } else if (cmd_s.find("chprompt") == 0) {//add chprompt
         return new ChangePromptCommand(cmd_line);
