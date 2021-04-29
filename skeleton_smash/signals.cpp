@@ -7,12 +7,14 @@ using namespace std;
 
 void ctrlZHandler(int sig_num) {
     cout << "smash: got ctrl-Z" << endl;
-    SmallShell::getInstance().stop_foreground();//uses small shel methods
+    SmallShell::getInstance().stop_foreground();//uses small shell methods
+    exit(sig_num);
 }
 
 void ctrlCHandler(int sig_num) {
     cout << "smash: got ctrl-C" << endl;
-    SmallShell::getInstance().kill_foreground();//uses small shel methods
+    SmallShell::getInstance().kill_foreground();//uses small shell methods
+    exit(sig_num);
 }
 
 void alarmHandler(int sig_num) {

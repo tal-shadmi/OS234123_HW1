@@ -218,7 +218,7 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         return;
     } else if (string(this->command_parts[1]) == "-") {
         if (*this->plastPwd == nullptr) {
-            perror("smash error: cd: OLDPWD not set");
+            perror("smash error: cd: OLDPWD not set\n");
             return;
         }
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
@@ -261,54 +261,71 @@ void JobsCommand::execute() {
 KillCommand::KillCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void KillCommand::execute() {
-    // TODO: error handling
+
     string job_id(this->command_parts[2]);
     char *char_part_job_id = nullptr;
     auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
     char *char_part_signal = nullptr;
     string signal(this->command_parts[1]);
+    string empty_str("");
     auto signal_n = strtol(signal.data(), &char_part_signal, 10);
-    if (job_id_n <= 0 || char_part_job_id != nullptr)
-        printf("job_id error");
-    if (-signal_n < 0 || -signal_n > 31 || char_part_signal != nullptr)
-        printf("invalid signal error");
-    map<int, JobsList::JobEntry*>::iterator element = this->job_list->all_jobs.find(job_id_n);
-    if (element == this->job_list->all_jobs.end()) {
-        printf("job not found");
+    auto element = this->job_list->all_jobs.find(job_id_n);
+    if (job_id_n <= 0 ||element == this->job_list->all_jobs.end()){
+        string error_msg = "smash error: kill: job-id ";
+        error_msg+=job_id;
+        error_msg+= " does not exist";
+        perror(error_msg.c_str());
+        return;
+    }
+    if (-signal_n < 0 || -signal_n > 31 || string(char_part_signal)!=""||string(char_part_job_id)!="") {
+        perror("smash error: kill: invalid arguments");
+        return;
     }
     pid_t pid = this->job_list->all_jobs.find(job_id_n)->second->getCommand()->GetPid();
-    if (!kill(pid, -signal_n)) {
-        printf("kill failed");
+    if (kill(pid, -signal_n)) {
+        perror("smash error: kill failed");
+        return;
     }
-
+    cout<<"signal number " <<-signal_n<< " was sent to pid "<<pid<<endl;
 }
 
 ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void ForegroundCommand::execute() {
+
+    //TODO : check if negative number error
     int job_id_n;
     pid_t pid;
     if (this->command_parts_num > 1) {
         string job_id(this->command_parts[1]);
         char *char_part_job_id = nullptr;
         job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
-        if (job_id_n <= 0 || char_part_job_id != nullptr)
-            printf("job_id error");
         auto element = this->job_list->all_jobs.find(job_id_n);
-        if (element == this->job_list->all_jobs.end()) {
-            printf("job not found");
+        if ((job_id_n <= 0 ||element == this->job_list->all_jobs.end())&&string(char_part_job_id)==""){
+            string error_msg = "smash error: kill: job-id ";
+            error_msg+=job_id;
+            error_msg+= " does not exist";
+            perror(error_msg.c_str());
+            return;
+        }
+        if(this->command_parts_num>2||string(char_part_job_id)!=""){
+            perror("smash error: fg: invalid arguments");
+            return;
         }
         pid = element->second->getCommand()->GetPid();
     } else {
-        pid = this->job_list->getLastJob(nullptr)->getCommand()->GetPid();
-        job_id_n = this->job_list->pid_to_job_id.find(pid)->second;
+        if(this->job_list->all_jobs.empty()){
+            perror("smash error: fg: jobs list is empty");
+            return;
+        }
+        pid = this->job_list->getLastJob(&job_id_n)->getCommand()->GetPid();
     }
     SmallShell::getInstance().set_foreground_job(job_id_n);
     this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetOnForeground(true);
     this->job_list->stopped_jobs.remove(pid);
     SmallShell::getInstance().set_foreground_job(job_id_n);
     kill(pid, SIGCONT);
-    waitpid(pid, nullptr, WNOHANG);
+    waitpid(pid, nullptr, 0);
 }
 
 BackgroundCommand::BackgroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
@@ -322,22 +339,33 @@ void BackgroundCommand::execute() {
         string job_id(this->command_parts[1]);
         char *char_part_job_id = nullptr;
         auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
-        if (job_id_n <= 0 || char_part_job_id != nullptr)
-            printf("job_id error");
+        if (job_id_n <= 0 || string(char_part_job_id) !=""){
+            perror("smash error: bg: invalid arguments");
+            return;
+        }
         auto job_it = this->job_list->all_jobs.find(job_id_n);
         if (job_it == this->job_list->all_jobs.end()) {
-            printf("smash error: bg: job-id <job-id> does not exist");
+            string error_msg = "smash error: bg: job-id ";
+            error_msg+=job_id;
+            error_msg+= " does not exist";
+            perror(error_msg.c_str());
+            return;
         }
         is_stopped = job_it->second->getCommand()->IsStopped();
         if (!is_stopped) {
-            printf("smash error: bg: job-id <job-id> is already running in the background");
+            string error_msg = "smash error: bg: job-id ";
+            error_msg+=job_id;
+            error_msg+= " is already running in the background";
+            perror(error_msg.c_str());
+            return;
         }
         job_entry = job_it->second;
         pid = job_it->second->getCommand()->GetPid();
     } else {
         job_entry = this->job_list->getLastStoppedJob(&job_id_n);
         if (job_entry == nullptr) {
-            printf("smash error: bg: there is no stopped jobs to resume");
+           perror("smash error: bg: there is no stopped jobs to resume");
+            return;
         }
         pid = job_entry->getCommand()->GetPid();
     }
@@ -350,9 +378,10 @@ QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs) :
         BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void QuitCommand::execute() {
-    if (strcmp(this->command_parts[1], "kill") == 0) {
-        this->job_list->removeFinishedJobs();//TODO
-        this->job_list->killAllJobs();//TODO
+    if (this->command_parts_num>1&&strcmp(this->command_parts[1], "kill") == 0) {
+        this->job_list->removeFinishedJobs();
+        this->job_list->killAllJobs();
+        this->job_list->removeFinishedJobs();
     }
     exit(0);
 }
@@ -392,9 +421,7 @@ void ExternalCommand::execute() {
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
             waitpid(pid, nullptr, 0);
             // after job finished set back smash to the state before this called command
-            int job_to_remove = SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second;
-            SmallShell::getInstance().set_foreground_job(-1);
-            SmallShell::getInstance().getJobList()->removeJobById(job_to_remove);
+
         }
     }
 }
@@ -488,6 +515,14 @@ void JobsList::printJobsList() {
 
 void JobsList::killAllJobs() {
 
+    int num_of_jobs = this->all_jobs.size();
+    cout<<"smash: sending SIGKILL signal to "<<num_of_jobs<<" jobs:"<<endl;
+    for_each(this->all_jobs.begin(), this->all_jobs.end(),
+                  [](pair<int , JobEntry*> element){
+                      kill(element.second->getCommand()->GetPid(),SIGKILL);
+                      string command_name(element.second->getCommand()->GetCommandName());
+                      cout<<element.second->getCommand()->GetPid()<<": "<<command_name<<endl;
+    });
 }
 
 void JobsList::removeFinishedJobs() {
@@ -500,6 +535,16 @@ void JobsList::removeFinishedJobs() {
         }
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
+    }
+    int job_id = SmallShell::getInstance().getForegroundJob();
+    pid_t pid ;
+    if(job_id==-1)return;
+    else{
+        pid = this->all_jobs.find(job_id)->second->getCommand()->GetPid();
+        if(waitpid(pid, nullptr,WNOHANG)==-1){
+            SmallShell::getInstance().set_foreground_job(-1);
+            SmallShell::getInstance().getJobList()->removeJobById(job_id);
+        }
     }
 }
 
@@ -514,7 +559,9 @@ void JobsList::removeJobById(int jobId) {
 }
 
 JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
-    *lastJobId = this->all_jobs.rbegin()->first;
+    if(lastJobId!= nullptr) {
+        *lastJobId = this->all_jobs.rbegin()->first;
+    }
     return this->all_jobs.rbegin()->second;
 }
 
@@ -651,7 +698,7 @@ void SmallShell::stop_foreground() {
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
     this->jobs_list->stopped_jobs.push_back(foreground_pid);
     this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
-    cout << "smash: process" << foreground_pid << "was killed" << endl;
+    cout << "smash: process " << foreground_pid << " was stopped" << endl;
     kill(pid, SIGSTOP);
 }
 
@@ -659,9 +706,9 @@ void SmallShell::kill_foreground() {
     this->jobs_list->removeFinishedJobs();
     if (this->getForegroundJob() == -1) return;
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
-    this->jobs_list->stopped_jobs.push_back(foreground_pid);
-    this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
-    cout << "smash: process" << foreground_pid << "was stopped" << endl;
+    /*this->jobs_list->stopped_jobs.push_back(foreground_pid);
+    this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);*/
+    cout << "smash: process " << foreground_pid <<" was killed"  << endl;
     kill(pid, SIGINT);
 }
 
