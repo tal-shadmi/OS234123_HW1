@@ -389,7 +389,7 @@ void ExternalCommand::execute() {
         if (!this->is_background){
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
-            wait(nullptr);
+            waitpid(pid, nullptr, 0);
             // after job finished set back smash to the state before this called command
             int job_to_remove = SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second;
             SmallShell::getInstance().set_foreground_job(-1);
