@@ -218,7 +218,7 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         return;
     } else if (string(this->command_parts[1]) == "-") {
         if (*this->plastPwd == nullptr) {
-            perror("smash error: cd: OLDPWD not set");
+            perror("smash error: cd: OLDPWD not set\n");
             return;
         }
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
@@ -391,9 +391,7 @@ void ExternalCommand::execute() {
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
             waitpid(pid, nullptr, 0);
             // after job finished set back smash to the state before this called command
-            int job_to_remove = SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second;
-            SmallShell::getInstance().set_foreground_job(-1);
-            SmallShell::getInstance().getJobList()->removeJobById(job_to_remove);
+
         }
     }
 }
@@ -499,6 +497,16 @@ void JobsList::removeFinishedJobs() {
         }
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
+    }
+    int job_id = SmallShell::getInstance().getForegroundJob();
+    pid_t pid ;
+    if(job_id==-1)return;
+    else{
+        pid = this->all_jobs.find(job_id)->second->getCommand()->GetPid();
+        if(waitpid(pid, nullptr,WNOHANG)==-1){
+            SmallShell::getInstance().set_foreground_job(-1);
+            SmallShell::getInstance().getJobList()->removeJobById(job_id);
+        }
     }
 }
 
@@ -650,7 +658,7 @@ void SmallShell::stop_foreground() {
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
     this->jobs_list->stopped_jobs.push_back(foreground_pid);
     this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
-    cout << "smash: process" << foreground_pid << "was killed" << endl;
+    cout << "smash: process" << foreground_pid << "was stopped" << endl;
     kill(pid, SIGSTOP);
 }
 
@@ -658,9 +666,9 @@ void SmallShell::kill_foreground() {
     this->jobs_list->removeFinishedJobs();
     if (this->getForegroundJob() == -1) return;
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
-    this->jobs_list->stopped_jobs.push_back(foreground_pid);
-    this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
-    cout << "smash: process" << foreground_pid << "was stopped" << endl;
+    /*this->jobs_list->stopped_jobs.push_back(foreground_pid);
+    this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);*/
+    cout << "smash: process" << foreground_pid <<"was killed"  << endl;
     kill(pid, SIGINT);
 }
 
