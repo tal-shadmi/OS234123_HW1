@@ -81,7 +81,7 @@ public:
 };
 
 class PipeCommand : public Command {
-    // TODO: Add your data members
+    bool is_background;
 public:
     explicit PipeCommand(const char *cmd_line);
     virtual ~PipeCommand() = default;

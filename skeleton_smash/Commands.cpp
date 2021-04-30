@@ -163,9 +163,71 @@ time_t Command::GetStartingTime() {
  * implementation for PipeCommand commands
  */
 
-PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {}
+PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line), is_background(_isBackgroundComamnd(cmd_line)) {}
 
-void PipeCommand::execute() {}
+void PipeCommand::execute() {
+    string cmd(this->command_name);
+    int pos = cmd.find('|');
+    // find out if input is from stdout or stderr
+    bool is_from_stdout = cmd[pos + 1] != '&';
+    pid_t main_pid, pid1, pid2;
+    int fd[2];
+    pipe(fd);
+    // main fork for the | process
+    main_pid = fork();
+    if (main_pid == -1){ // failed fork from smash
+        perror("smash error: fork failed");
+        return;
+    }
+    if (main_pid == 0){ // child of smash
+        // set to be in the same group ID of smash
+        setpgrp();
+        // fork for the left side command
+        pid1 = fork();
+        if (pid1 == 0){
+            if (is_from_stdout){
+                dup2(fd[1], 1);
+            } else{
+                dup2(fd[1], 2);
+            }
+            close(fd[0]);
+            close(fd[1]);
+            SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
+            exit(0);
+        }
+        else if (pid1 == -1){
+            perror("smash error: fork failed");
+            exit(1);
+        }
+        // fork for the right side command
+        pid2 = fork();
+        if (pid2 == 0){
+            dup2(fd[0], 0);
+            close(fd[0]);
+            close(fd[1]);
+            SmallShell::getInstance().executeCommand(cmd.substr(pos + 1,cmd.length()).c_str());
+            exit(0);
+        }
+        else if (pid2 == -1){
+            perror("smash error: fork failed");
+            exit(1);
+        }
+        waitpid(pid1, nullptr, 0);
+        waitpid(pid2, nullptr, 0);
+        close(fd[0]);
+        close(fd[1]);
+        exit(0);
+    }
+    else{ // father (smash)
+        this->SetPid(pid);
+        SmallShell::getInstance().add_to_job_list(this);
+        if (!this->is_background){
+            // set smash foreground job to this job and wait
+            SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
+            waitpid(pid, nullptr, 0);
+        }
+    }
+}
 
 /**
  * implementation for RedirectionCommand commands
@@ -178,24 +240,43 @@ void RedirectionCommand::execute() {
     string cmd(this->command_name);
     int pos = cmd.find('>');
     bool is_override = cmd[pos + 1] != '>';
-    int pipes_fd[2];
-    pipe(pipes_fd);
-    // cout would go to
-    dup2(pipes_fd[1], 1);
     if (is_override) {
         // opening file with writing access, name as stated in the command
-        int fd = open(this->command_parts[2], O_RDWR | O_CREAT);
+        fd = open(this->command_parts[2], O_RDWR | O_CREAT | O_TRUNC, 0666);
     }
     else{
         // opening file with writing access, name as stated in the command and with appending option
-        int fd = open(this->command_parts[2], O_RDWR | O_CREAT | O_APPEND);
+        fd = open(this->command_parts[2], O_RDWR | O_CREAT | O_APPEND, 0666);
     }
-    if (fork() == 0){
+    if (fd == -1){
+        perror("smash error: open failed");
+        return;
+    }
+    int monitor = dup(1);
+    dup2(fd, 1);
+    close(fd);
+    SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
+    dup2(monitor, 1);
+
+    /*int pipes_fd[2];
+    pipe(pipes_fd);
+    int save_monitor = dup(1);
+    int save_file = dup(fd);
+    dup2(pipes_fd[1], 1);
+    dup2(pipes_fd[0], fd);
+    close(pipes_fd[0]);
+    close(pipes_fd[1]);
+    SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
+    dup2(save_monitor, 1);
+    dup2(save_file, fd);*/
+
+    /*if (fork() == 0){
         dup2(pipes_fd[1], 1);
         close(pipes_fd[0]);
         close(pipes_fd[1]);
         // execute command before ">" or ">>"
         SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
+        exit(0);
     }
     else{
         dup2(pipes_fd[0], fd);
@@ -203,7 +284,7 @@ void RedirectionCommand::execute() {
         close(pipes_fd[1]);
     }
     close(pipes_fd[0]);
-    close(pipes_fd[1]);
+    close(pipes_fd[1]);*/
 }
 
 /**
@@ -423,16 +504,16 @@ void QuitCommand::execute() {
 CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void CatCommand::execute() {
-    if (command_parts_num < 2){
+    /*if (command_parts_num < 2){
         perror("smash error: cat: not enough arguments");
-        exit(1);
+        return;
     }
     for (int i=1; i<this->command_parts_num; i++){
         fstream file;
         file.open(this->command_parts[i], ios::in);
         if (!file){
             perror("smash error: fopen failed");
-            exit(1);
+            return;
         }
         char ch;
         while (true) {
@@ -442,7 +523,29 @@ void CatCommand::execute() {
             cout << ch;
         }
         file.close();
+    }*/
+    if (this->command_parts_num < 2){
+        perror("smash error: cat: not enough arguments");
+        exit(1);
     }
+    int fd;
+    ssize_t read_status;
+    for (int i=1; i<this->command_parts_num; i++){
+        fd = open(this->command_parts[i], O_RDONLY);
+        if (fd == -1){
+            perror("smash error: fopen failed");
+            return;
+        }
+        char c[500];
+        while (true){
+            read_status = read(fd, &c, 500);
+            if (!read_status){
+                break;
+            }
+            write(1, &c, read_status);
+        }
+    }
+    close(fd);
 }
 
 /**
@@ -479,8 +582,6 @@ void ExternalCommand::execute() {
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
             waitpid(pid, nullptr, 0);
-            // after job finished set back smash to the state before this called command
-
         }
     }
 }
@@ -657,11 +758,11 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
                                              //If no matches were found, the function returns string::npos.
         return new RedirectionCommand(cmd_line);
-    } /*else if (cmd_s.find('|') != string::npos) {
+    } else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);
-    }*/
+    }
     else if (cmd_s.find("cat") == 0){
-        return new PipeCommand(cmd_line);
+        return new CatCommand(cmd_line);
     } else if (cmd_s.find("chprompt") == 0) {//add chprompt
         return new ChangePromptCommand(cmd_line);
     } else if (cmd_s.find("showpid") == 0) {
