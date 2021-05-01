@@ -225,6 +225,8 @@ void PipeCommand::execute() {
         exit(0);
     }
     else{ // father (smash)
+        close(fd[0]);
+        close(fd[1]);
         this->SetPid(main_pid);
         SmallShell::getInstance().add_to_job_list(this);
         if (!this->is_background){
