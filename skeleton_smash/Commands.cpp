@@ -209,7 +209,12 @@ void PipeCommand::execute() {
             dup2(fd[0], 0);
             close(fd[0]);
             close(fd[1]);
-            SmallShell::getInstance().executeCommand(cmd.substr(pos + 1,cmd.length()).c_str());
+            if (is_from_stdout){
+                SmallShell::getInstance().executeCommand(cmd.substr(pos + 1,cmd.length()).c_str());
+            }
+            else{
+                SmallShell::getInstance().executeCommand(cmd.substr(pos + 2,cmd.length()).c_str());
+            }
             exit(0);
         }
         else if (pid2 == -1){
@@ -446,7 +451,7 @@ void ForegroundCommand::execute() {
     SmallShell::getInstance().set_foreground_job(job_id_n);
     this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetOnForeground(true);
     this->job_list->stopped_jobs.remove(pid);
-    SmallShell::getInstance().set_foreground_job(job_id_n);
+    cout << this->job_list->all_jobs.find(job_id_n)->second->getCommand()->GetCommandName() << " : " << pid << endl;
     kill(pid, SIGCONT);
     waitpid(pid, nullptr, 0);
 }
@@ -534,7 +539,7 @@ void CatCommand::execute() {
     }*/
     if (this->command_parts_num < 2){
         perror("smash error: cat: not enough arguments");
-        exit(1);
+        return;
     }
     int fd;
     ssize_t read_status;
@@ -699,9 +704,6 @@ void JobsList::removeFinishedJobs() {
     if(this->all_jobs.empty())return;
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
         int job_to_remove = this->pid_to_job_id.find(stopped)->second;
-        if (job_to_remove == SmallShell::getInstance().getForegroundJob()) {
-            SmallShell::getInstance().set_foreground_job(-1);
-        }
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
     }

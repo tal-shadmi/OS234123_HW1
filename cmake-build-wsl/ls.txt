@@ -1,0 +1,27 @@
+total 616
+-rw-rw-r-- 1 talshadmi talshadmi      4 May  1 12:33  tal.txt
+-rw-rw-r-- 1 talshadmi talshadmi      4 May  1 12:20 >
+-rw-rw-r-- 1 talshadmi talshadmi  45790 Apr 19 16:01 CMakeCache.txt
+drwxrwxrwx 1 talshadmi talshadmi    512 May  1 13:15 CMakeFiles
+-rw-rw-r-- 1 talshadmi talshadmi   7392 Apr 26 17:42 Makefile
+-rwxrwxr-x 1 talshadmi talshadmi 556760 May  1 13:07 OS234123_HW1
+-rw-rw-r-- 1 talshadmi talshadmi   6378 Apr 26 17:42 OS234123_HW1.cbp
+drwxrwxr-x 1 talshadmi talshadmi    512 Apr 19 16:01 Testing
+-rw-rw-r-- 1 talshadmi talshadmi   1561 Apr 19 16:01 cmake_install.cmake
+drwxrwxrwx 1 talshadmi talshadmi    512 May  1 11:08 coverage
+-rw-rw-r-- 1 talshadmi talshadmi      7 Apr 30 13:40 daf.txt
+-rw-rw-r-- 1 talshadmi talshadmi      3 Apr 30 12:23 file.txt
+-rw-rw-r-- 1 talshadmi talshadmi      6 Apr 29 16:38 file1.txt
+-rw-rw-r-- 1 talshadmi talshadmi      6 Apr 29 16:38 file2.txt
+-------r-- 1 talshadmi talshadmi      0 Apr 29 18:32 is
+-rw-rw-r-- 1 talshadmi talshadmi      0 May  1 13:16 ls.txt
+------x--x 1 talshadmi talshadmi      0 Apr 29 18:32 pid.txt
+-rwxrwxr-x 1 talshadmi talshadmi      0 Apr 30 14:30 pid1.txt
+-rw-rw-r-- 1 talshadmi talshadmi     38 May  1 13:16 pid2.txt
+-rw-rw-r-- 1 talshadmi talshadmi     19 Apr 30 12:32 pid3.txt
+-rw-rw-r-- 1 talshadmi talshadmi     20 Apr 30 12:39 pid4.txt
+-rw-rw-r-- 1 talshadmi talshadmi      6 May  1 12:51 rotem.txt
+-rw-rw-r-- 1 talshadmi talshadmi     23 May  1 12:52 tal.txt
+-rw-rw-r-- 1 talshadmi talshadmi      3 Apr 30 13:43 tal2.txt
+-rw-rw-r-- 1 talshadmi talshadmi      3 Apr 30 12:59 test.txt
+-rw-rw-r-- 1 talshadmi talshadmi      4 Apr 30 13:00 test2.txt
