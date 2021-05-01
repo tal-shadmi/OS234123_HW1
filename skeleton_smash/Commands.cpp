@@ -328,7 +328,6 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         }
         delete[] *this->plastPwd;
         *this->plastPwd = cwd ;
-        // free(cwd);
     } else if (string(this->command_parts[1]) == "..") {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
         getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
@@ -341,12 +340,15 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
         }
         delete[] *this->plastPwd;
         *this->plastPwd = cwd;
-        // free(cwd);
     } else {
+        char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
+        getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
         if (chdir(this->command_parts[1]) == -1) {
             perror("smash error: chdir failed");
             return;
         }
+        delete[] *this->plastPwd;
+        *this->plastPwd = cwd;
     }
 }
 
@@ -684,10 +686,10 @@ SmallShell::SmallShell() {
 
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string cmd_s = _trim(string(cmd_line));
-    //string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
     /* add missind commands , it's basicly the same just more elegant*/
-    if (cmd_s.empty()) {
+    /*if (cmd_s.empty()) {
         return nullptr;
     }
     if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
@@ -696,39 +698,51 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);
     }
-    else if (cmd_s.find("cat") == 0){
+    else if (cmd_s.find("cat ") == 0 || cmd_s.find("cat\n") == 0){
         return new CatCommand(cmd_line);
-    } else if (cmd_s.find("chprompt") == 0) {//add chprompt
+    } else if (cmd_s.find("chprompt ") == 0 || cmd_s.find("chprompt\n") == 0) {//add chprompt
         return new ChangePromptCommand(cmd_line);
-    } else if (cmd_s.find("showpid") == 0) {
+    } else if (cmd_s.find("showpid ") == 0 || cmd_s.find("showpid\n") == 0) {
         return new ShowPidCommand(cmd_line);
-    } else if (cmd_s.find("pwd") == 0) {
+    } else if (cmd_s.find("pwd ") == 0 || cmd_s.find("pwd\n") == 0) {
         return new GetCurrDirCommand(cmd_line);
-    } else if (cmd_s.find("cd") == 0) {
+    } else if (cmd_s.find("cd ") == 0 || cmd_s.find("cd\n") == 0) {
         return new ChangeDirCommand(cmd_line, (char **) this->last_path.c_str());
-    } else if (cmd_s.find("jobs") == 0) {
+    } else if (cmd_s.find("jobs\n") == 0) {
         return new JobsCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("kill") == 0) {
+    } else if (cmd_s.find("kill ") == 0 || cmd_s.find("kill\n") == 0) {
         return new KillCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("fg") == 0) {
+    } else if (cmd_s.find("fg ") == 0 || cmd_s.find("fg\n") == 0) {
         return new ForegroundCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("bg") == 0) {
+    } else if (cmd_s.find("bg ") == 0 || cmd_s.find("bg\n") == 0) {
         return new BackgroundCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("quit") == 0) {
+    } else if (cmd_s.find("quit ") == 0 || cmd_s.find("quit\n") == 0) {
         return new QuitCommand(cmd_line, this->jobs_list);
     } else {
         return new ExternalCommand(cmd_line);
-    }
+    }*/
 
-/*
-    if (firstWord == "showpid") {
+    if (cmd_s.empty()) {
+        return nullptr;
+    }
+    else if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
+                                             //If no matches were found, the function returns string::npos.
+        return new RedirectionCommand(cmd_line);
+    }
+    else if (cmd_s.find('|') != string::npos) {
+        return new PipeCommand(cmd_line);
+    }
+    else if (firstWord == "chprompt") {
+        return new ChangePromptCommand(cmd_line);
+    }
+    else if (firstWord == "showpid") {
         return new ShowPidCommand(cmd_line);
     }
     else if (firstWord == "pwd") {
         return new GetCurrDirCommand(cmd_line);
     }
     else if (firstWord == "cd") {
-        return new ChangeDirCommand(cmd_line, (char **) this->lastPath.c_str());
+        return new ChangeDirCommand(cmd_line, (char **) this->last_path.c_str());
     }
     else if (firstWord == "jobs"){
         return new JobsCommand(cmd_line,this->jobs_list);
@@ -747,7 +761,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     }
     else {
         return new ExternalCommand(cmd_line);
-    }*/
+    }
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
@@ -803,8 +817,6 @@ void SmallShell::kill_foreground() {
     this->jobs_list->removeFinishedJobs();
     if (this->getForegroundJob() == -1) return;
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
-    /*this->jobs_list->stopped_jobs.push_back(foreground_pid);
-    this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);*/
     cout << "smash: process " << foreground_pid <<" was killed"  << endl;
     kill(foreground_pid, SIGINT);
 }
