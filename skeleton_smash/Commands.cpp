@@ -176,6 +176,8 @@ void PipeCommand::execute() {
     // main fork for the | process
     main_pid = fork();
     if (main_pid == -1){ // failed fork from smash
+        close(fd[0]);
+        close(fd[1]);
         perror("smash error: fork failed");
         return;
     }
@@ -196,6 +198,8 @@ void PipeCommand::execute() {
             exit(0);
         }
         else if (pid1 == -1){
+            close(fd[0]);
+            close(fd[1]);
             perror("smash error: fork failed");
             exit(1);
         }
@@ -209,22 +213,24 @@ void PipeCommand::execute() {
             exit(0);
         }
         else if (pid2 == -1){
+            close(fd[0]);
+            close(fd[1]);
             perror("smash error: fork failed");
             exit(1);
         }
-        waitpid(pid1, nullptr, 0);
-        waitpid(pid2, nullptr, 0);
         close(fd[0]);
         close(fd[1]);
+        waitpid(pid1, nullptr, 0);
+        waitpid(pid2, nullptr, 0);
         exit(0);
     }
     else{ // father (smash)
-        this->SetPid(pid);
+        this->SetPid(main_pid);
         SmallShell::getInstance().add_to_job_list(this);
         if (!this->is_background){
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
-            waitpid(pid, nullptr, 0);
+            waitpid(main_pid, nullptr, WUNTRACED);
         }
     }
 }
@@ -242,11 +248,11 @@ void RedirectionCommand::execute() {
     bool is_override = cmd[pos + 1] != '>';
     if (is_override) {
         // opening file with writing access, name as stated in the command
-        fd = open(this->command_parts[2], O_RDWR | O_CREAT | O_TRUNC, 0666);
+        fd = open(_trim(cmd.substr(pos + 1,cmd.length())).c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
     }
     else{
         // opening file with writing access, name as stated in the command and with appending option
-        fd = open(this->command_parts[2], O_RDWR | O_CREAT | O_APPEND, 0666);
+        fd = open(_trim(cmd.substr(pos + 2,cmd.length())).c_str(), O_RDWR | O_CREAT | O_APPEND, 0666);
     }
     if (fd == -1){
         perror("smash error: open failed");
@@ -533,7 +539,7 @@ void CatCommand::execute() {
     for (int i=1; i<this->command_parts_num; i++){
         fd = open(this->command_parts[i], O_RDONLY);
         if (fd == -1){
-            perror("smash error: fopen failed");
+            perror("smash error: open failed");
             return;
         }
         char c[500];
@@ -572,7 +578,9 @@ void ExternalCommand::execute() {
         free(s); // added this to avoid memory leak, seems to work just fine
         exit(0);//if reached here all good, if an error was made it will send a signal smash
     } else { // father
-        if (pid == -1) { // TODO: handle fork failed
+        if (pid == -1) {
+            perror("smash error: fork failed");
+            return;
         }
         // TODO: maybe we should send a pointer to wait to get the exit status of the child
         // set child pid and add job to the list
@@ -581,7 +589,7 @@ void ExternalCommand::execute() {
         if (!this->is_background){
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
-            waitpid(pid, nullptr, 0);
+            waitpid(pid, nullptr, WUNTRACED);
         }
     }
 }
