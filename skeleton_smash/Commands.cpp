@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <stdio.h>
-#include <fstream>
 #include <fcntl.h>
 
 #define SMASH_NAME  "smash"
@@ -270,34 +269,6 @@ void RedirectionCommand::execute() {
     close(fd);
     SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
     dup2(monitor, 1);
-
-    /*int pipes_fd[2];
-    pipe(pipes_fd);
-    int save_monitor = dup(1);
-    int save_file = dup(fd);
-    dup2(pipes_fd[1], 1);
-    dup2(pipes_fd[0], fd);
-    close(pipes_fd[0]);
-    close(pipes_fd[1]);
-    SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
-    dup2(save_monitor, 1);
-    dup2(save_file, fd);*/
-
-    /*if (fork() == 0){
-        dup2(pipes_fd[1], 1);
-        close(pipes_fd[0]);
-        close(pipes_fd[1]);
-        // execute command before ">" or ">>"
-        SmallShell::getInstance().executeCommand(cmd.substr(0,pos).c_str());
-        exit(0);
-    }
-    else{
-        dup2(pipes_fd[0], fd);
-        close(pipes_fd[0]);
-        close(pipes_fd[1]);
-    }
-    close(pipes_fd[0]);
-    close(pipes_fd[1]);*/
 }
 
 /**
@@ -517,26 +488,6 @@ void QuitCommand::execute() {
 CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void CatCommand::execute() {
-    /*if (command_parts_num < 2){
-        perror("smash error: cat: not enough arguments");
-        return;
-    }
-    for (int i=1; i<this->command_parts_num; i++){
-        fstream file;
-        file.open(this->command_parts[i], ios::in);
-        if (!file){
-            perror("smash error: fopen failed");
-            return;
-        }
-        char ch;
-        while (true) {
-            file >> ch;
-            if (file.eof())
-                break;
-            cout << ch;
-        }
-        file.close();
-    }*/
     if (this->command_parts_num < 2){
         perror("smash error: cat: not enough arguments");
         return;
@@ -600,34 +551,6 @@ void ExternalCommand::execute() {
         }
     }
 }
-
-/*
-void ExternalCommand::execute() {
-    char* argv[sizeof(this->commandParts) + 2];
-    argv[0] = (char*)"bash";
-    argv[1] = (char*)"-c";
-    for (int i = 2; i < sizeof(this->commandParts) + 2; ++i) {
-        argv[i] = this->commandParts[i - 2];
-    }
-    pid_t pid = fork();
-    if(pid==0){//if Son
-        setpgrp();
-        execv("/bin/bash", argv);
-        exit(0);
-    }
-    else if(pid>0){//if father
-        this->SetPid(pid);
-        int job_id;
-        SmallShell::getInstance().getJobList()->getLastJob(&job_id);
-        SmallShell::getInstance().getJobList()->jobs_id_by_pid->insert(pair<pid_t,int>(pid,job_id));
-
-        wait(nullptr);
-    }
-    else{
-        //error
-    }
-}
-*/
 
 /**
  * implementation of jobEntry
@@ -873,7 +796,7 @@ void SmallShell::stop_foreground() {
     this->jobs_list->stopped_jobs.push_back(foreground_pid);
     this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
     cout << "smash: process " << foreground_pid << " was stopped" << endl;
-    kill(pid, SIGSTOP);
+    kill(foreground_pid, SIGTSTP);
 }
 
 void SmallShell::kill_foreground() {
@@ -883,7 +806,7 @@ void SmallShell::kill_foreground() {
     /*this->jobs_list->stopped_jobs.push_back(foreground_pid);
     this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);*/
     cout << "smash: process " << foreground_pid <<" was killed"  << endl;
-    kill(pid, SIGINT);
+    kill(foreground_pid, SIGINT);
 }
 
 
