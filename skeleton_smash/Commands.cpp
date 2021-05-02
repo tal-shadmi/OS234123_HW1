@@ -448,8 +448,8 @@ void BackgroundCommand::execute() {
     if (this->command_parts_num > 1) {
         string job_id(this->command_parts[1]);
         char *char_part_job_id = nullptr;
-        auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
-        if (job_id_n <= 0 || string(char_part_job_id) !=""){
+        job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
+        if (job_id_n <= 0 || string(char_part_job_id) != ""){
             perror("smash error: bg: invalid arguments");
             return;
         }
@@ -480,7 +480,7 @@ void BackgroundCommand::execute() {
         pid = job_entry->getCommand()->GetPid();
     }
     this->job_list->stopped_jobs.remove(pid);
-    job_entry->set_stopped_status(false);
+    this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(false);
     if(kill(pid, SIGCONT) == -1){
         perror("smash error: kill failed");
         return;
