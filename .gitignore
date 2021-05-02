@@ -154,3 +154,7 @@ cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.o
 cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.o
 cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.o
 cmake-build-debug/OS234123_HW1.exe
+cmake-build-debug/OS234123_HW1.exe
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/Commands.cpp.o
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/signals.cpp.o
+cmake-build-wsl/CMakeFiles/OS234123_HW1.dir/skeleton_smash/smash.cpp.o

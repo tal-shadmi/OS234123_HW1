@@ -435,7 +435,7 @@ void ForegroundCommand::execute() {
         perror("smash error: kill failed");
         return;
     }
-    waitpid(pid, nullptr, 0);
+    waitpid(pid, nullptr, WUNTRACED);
 }
 
 BackgroundCommand::BackgroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
@@ -656,7 +656,7 @@ void JobsList::removeFinishedJobs() {
     }
     int job_id = SmallShell::getInstance().getForegroundJob();
     pid_t pid ;
-    if(job_id==-1)return;
+    if(job_id==-1) return;
     else{
         pid = this->all_jobs.find(job_id)->second->getCommand()->GetPid();
         if(waitpid(pid, nullptr,WNOHANG)==-1){
@@ -699,7 +699,7 @@ SmallShell::SmallShell() {
 // TODO: add your implementation
     this->jobs_list = new JobsList();
     this->pid = getpid();
-    this->job_on_foreground = -1 ;
+    this->job_on_foreground = -1;
 }
 
 /**
@@ -835,7 +835,7 @@ void SmallShell::stop_foreground() {
     this->jobs_list->stopped_jobs.push_back(foreground_pid);
     this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
     cout << "smash: process " << foreground_pid << " was stopped" << endl;
-    if (kill(foreground_pid, SIGTSTP) == -1){
+    if (kill(foreground_pid, SIGSTOP) == -1){
         perror("smash error: kill failed");
         return;
     }
@@ -846,7 +846,7 @@ void SmallShell::kill_foreground() {
     if (this->getForegroundJob() == -1) return;
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
     cout << "smash: process " << foreground_pid <<" was killed"  << endl;
-    if(kill(foreground_pid, SIGINT) == -1){
+    if(kill(foreground_pid, SIGKILL) == -1){
         perror("smash error: kill failed");
         return;
     }
