@@ -383,9 +383,15 @@ void KillCommand::execute() {
         return;
     }
     pid_t pid = this->job_list->all_jobs.find(job_id_n)->second->getCommand()->GetPid();
-    if (kill(pid, -signal_n)) {
+    if (kill(pid, -signal_n) == -1) {
         perror("smash error: kill failed");
         return;
+    }
+    if (-signal_n == SIGSTOP || -signal_n == SIGTSTP){
+        this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(true);
+    }
+    else if (-signal_n == SIGCONT){
+        this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(false);
     }
     cout<<"signal number " <<-signal_n<< " was sent to pid "<<pid<<endl;
 }
@@ -425,7 +431,10 @@ void ForegroundCommand::execute() {
     this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetOnForeground(true);
     this->job_list->stopped_jobs.remove(pid);
     cout << this->job_list->all_jobs.find(job_id_n)->second->getCommand()->GetCommandName() << " : " << pid << endl;
-    kill(pid, SIGCONT);
+    if (kill(pid, SIGCONT) == -1){
+        perror("smash error: kill failed");
+        return;
+    }
     waitpid(pid, nullptr, 0);
 }
 
@@ -472,7 +481,10 @@ void BackgroundCommand::execute() {
     }
     this->job_list->stopped_jobs.remove(pid);
     job_entry->set_stopped_status(false);
-    kill(pid, SIGCONT);
+    if(kill(pid, SIGCONT) == -1){
+        perror("smash error: kill failed");
+        return;
+    }
 }
 
 QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs) :
@@ -505,10 +517,17 @@ void CatCommand::execute() {
         char c[500];
         while (true){
             read_status = read(fd, &c, 500);
+            if (read_status == -1){
+                perror("smash error: read failed");
+                return;
+            }
             if (!read_status){
                 break;
             }
-            write(1, &c, read_status);
+            if (write(1, &c, read_status) == -1){
+                perror("smash error: write failed");
+                return;
+            }
         }
     }
     close(fd);
@@ -618,7 +637,10 @@ void JobsList::killAllJobs() {
     cout<<"smash: sending SIGKILL signal to "<<num_of_jobs<<" jobs:"<<endl;
     for_each(this->all_jobs.begin(), this->all_jobs.end(),
                   [](pair<int , JobEntry*> element){
-                      kill(element.second->getCommand()->GetPid(),SIGKILL);
+                      if (kill(element.second->getCommand()->GetPid(),SIGKILL) == -1){
+                          perror("smash error: kill failed");
+                          return;
+                      }
                       string command_name(element.second->getCommand()->GetCommandName());
                       cout<<element.second->getCommand()->GetPid()<<": "<<command_name<<endl;
     });
@@ -732,6 +754,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);
     }
+    else if (firstWord == "cat"){
+        return new CatCommand(cmd_line);
+    }
     else if (firstWord == "chprompt") {
         return new ChangePromptCommand(cmd_line);
     }
@@ -810,7 +835,10 @@ void SmallShell::stop_foreground() {
     this->jobs_list->stopped_jobs.push_back(foreground_pid);
     this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
     cout << "smash: process " << foreground_pid << " was stopped" << endl;
-    kill(foreground_pid, SIGTSTP);
+    if (kill(foreground_pid, SIGTSTP) == -1){
+        perror("smash error: kill failed");
+        return;
+    }
 }
 
 void SmallShell::kill_foreground() {
@@ -818,7 +846,10 @@ void SmallShell::kill_foreground() {
     if (this->getForegroundJob() == -1) return;
     pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
     cout << "smash: process " << foreground_pid <<" was killed"  << endl;
-    kill(foreground_pid, SIGINT);
+    if(kill(foreground_pid, SIGINT) == -1){
+        perror("smash error: kill failed");
+        return;
+    }
 }
 
 
