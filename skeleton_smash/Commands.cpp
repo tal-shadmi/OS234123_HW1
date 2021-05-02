@@ -556,7 +556,7 @@ void ExternalCommand::execute() {
     if (pid == 0) { // child
         setpgrp();
         execv(argv[0], argv);
-        free(s); // added this to avoid memory leak, seems to work just fine
+        delete[] s; // added this to avoid memory leak, seems to work just fine
         exit(0);//if reached here all good, if an error was made it will send a signal smash
     } else { // father
         if (pid == -1) {
@@ -853,6 +853,7 @@ void SmallShell::kill_foreground() {
         perror("smash error: kill failed");
         return;
     }
+    SmallShell::getInstance().getJobList()->removeJobById(this->getForegroundJob());
     this->set_foreground_job(-1);
 }
 
