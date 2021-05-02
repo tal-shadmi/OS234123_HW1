@@ -389,9 +389,11 @@ void KillCommand::execute() {
     }
     if (-signal_n == SIGSTOP || -signal_n == SIGTSTP){
         this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(true);
+        this->job_list->stopped_jobs.push_back(pid);
     }
     else if (-signal_n == SIGCONT){
         this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(false);
+        this->job_list->stopped_jobs.remove(pid);
     }
     cout<<"signal number " <<-signal_n<< " was sent to pid "<<pid<<endl;
 }
@@ -839,6 +841,7 @@ void SmallShell::stop_foreground() {
         perror("smash error: kill failed");
         return;
     }
+    this->set_foreground_job(-1);
 }
 
 void SmallShell::kill_foreground() {
@@ -850,6 +853,7 @@ void SmallShell::kill_foreground() {
         perror("smash error: kill failed");
         return;
     }
+    this->set_foreground_job(-1);
 }
 
 
