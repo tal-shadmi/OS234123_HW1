@@ -7,9 +7,13 @@
 
 int main(int argc, char *argv[]) {
 
-    if (signal(SIGALRM, alarmHandler) == SIG_ERR) {
+    struct sigaction sa{{0}};
+    sa.sa_flags = SA_RESTART;
+
+
+    sa.sa_handler = alarmHandler;
+    if (sigaction(SIGALRM,&sa, nullptr)!= 0 ) {
         perror("smash error: failed to set alarm handler");//for alarm handeling
-        return 0;
     }
 
     if (signal(SIGTSTP, ctrlZHandler) == SIG_ERR) {
