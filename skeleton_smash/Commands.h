@@ -18,7 +18,7 @@ class JobsList; //decalared
 
 class Command {
 protected:
-    time_t starting_time = 0;
+    time_t starting_time;
     char **command_parts;
     int command_parts_num;
     char *command_name;
@@ -184,6 +184,14 @@ public:
     void execute() override;
 };
 
+class TimeoutCommand : public Command {
+public:
+    TimeoutCommand(const char *cmd_line);
+    ~TimeoutCommand() override = default ;
+    void  execute() override ;
+};
+
+
 class JobsList {
 public:
     class JobEntry {
@@ -231,11 +239,16 @@ public:
 
 class SmallShell {
 private:
+    struct time_out_command{
+        pid_t pid;
+        string command_name;
+    };
     JobsList *jobs_list; // changed from jobs -> jobs_list
     string prompt_name = "smash";//add default starting name
     pid_t pid;
     string last_path;
     int job_on_foreground; //curr job on foreground , for ctrl+c / ctrl+z handlers
+    map<time_t , time_out_command > jobs_time_out;
 
 
     SmallShell();
@@ -256,10 +269,12 @@ public:
     string getPromptName();
     void setPromptName(string newPromptName);
     void add_to_job_list(Command *cmd); // just to make it easier to add new jobs
+    void add_to_time_out(Command *cmd , time_t duration);
     void set_foreground_job(int job_id);
     int getForegroundJob();
     void stop_foreground();
     void kill_foreground();
+    void kill_time_out();
     pid_t get_pid() const;
     JobsList *getJobList();
 };

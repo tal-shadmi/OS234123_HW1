@@ -318,7 +318,6 @@ ChangeDirCommand::~ChangeDirCommand() noexcept {
     delete[] this->plastPwd;
 }
 
-// TODO: handle errors properly
 void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in the right placed
     if (this->command_parts_num == 1){
         return;
@@ -580,9 +579,31 @@ void ExternalCommand::execute() {
         if (!this->is_background){
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
-            waitpid(pid, nullptr, WUNTRACED);
+            waitpid(pid, nullptr, WUNTRACED );
         }
     }
+}
+
+/**
+ * implementation of TimeoutCommand
+ */
+
+TimeoutCommand::TimeoutCommand(const char *cmd_line) : Command(cmd_line) {};
+
+void TimeoutCommand::execute() {
+    string duration(this->command_parts[1]);
+    int duration_n = strtol(duration.data(), nullptr, 10);
+    string cmd(this->command_name);
+    string sub_cmd(this->command_parts[2]);
+    int pos = cmd.find(sub_cmd);
+
+    Command * command = SmallShell::getInstance().CreateCommand(cmd.substr(pos,cmd.length()).c_str());
+    if (!command) return;//check if valid
+    SmallShell::getInstance().getJobList()->removeFinishedJobs();
+    alarm(duration_n);
+    command->execute();
+    SmallShell::getInstance().add_to_time_out(command,(time_t)duration_n);
+
 }
 
 /**
@@ -600,6 +621,8 @@ bool JobsList::JobEntry::stopped() const {
 bool JobsList::JobEntry::operator!=(const JobEntry &job_entry) const {
     return this->command->GetPid() != job_entry.command->GetPid();
 }
+
+
 
 void JobsList::JobEntry::set_stopped_status(bool stopped) {
     this->is_stopped = stopped;
@@ -771,6 +794,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);
     }
+    else if (firstWord == "timeout"){
+        return new TimeoutCommand(cmd_line);
+    }
     else if (firstWord == "cat"){
         return new CatCommand(cmd_line);
     }
@@ -847,6 +873,19 @@ void SmallShell::add_to_job_list(Command *cmd) {
     this->jobs_list->addJob(cmd);
 }
 
+void SmallShell::add_to_time_out(Command *cmd, time_t duration) {
+    time_out_command toc;
+    toc.command_name = "timeout ";
+    toc.command_name+= to_string(duration);
+    toc.command_name+= " ";
+    toc.command_name+= cmd->GetCommandName();
+    toc.command_name+=" timed out!";
+    time_t expected_finish_time = duration + cmd->GetStartingTime();
+    toc.pid = cmd->GetPid();
+    this->jobs_time_out.insert(pair<time_t,time_out_command>(expected_finish_time,toc));
+    /*if();*/
+}
+
 void SmallShell::set_foreground_job(int job_id) {
     this->job_on_foreground = job_id;
 }
@@ -869,6 +908,7 @@ void SmallShell::stop_foreground() {
     this->set_foreground_job(-1);
 }
 
+
 void SmallShell::kill_foreground() {
     this->jobs_list->removeFinishedJobs();
     if (this->getForegroundJob() == -1) return;
@@ -882,7 +922,15 @@ void SmallShell::kill_foreground() {
     this->set_foreground_job(-1);
 }
 
-
-
+void SmallShell::kill_time_out() {
+    if (this->jobs_time_out.empty()){
+        return;
+    }
+    pid_t to_pid = this->jobs_time_out.begin()->second.pid;
+    kill(to_pid, SIGKILL);
+    cout << "smash: " << this->jobs_time_out.begin()->second.command_name << endl;
+    this->jobs_list->removeFinishedJobs();
+    this->jobs_time_out.erase(this->jobs_time_out.begin());
+}
 
 

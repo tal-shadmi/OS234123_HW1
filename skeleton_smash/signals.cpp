@@ -17,7 +17,6 @@ void ctrlCHandler(int sig_num) {
 
 void alarmHandler(int sig_num) {
     cout << "smash: got an alarm" << endl;
-    // SmallShell::getInstance()  func to print the time out jobs
-    //uses small shel methods
+    SmallShell::getInstance().kill_time_out();
 }
 
