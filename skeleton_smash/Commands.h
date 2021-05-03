@@ -32,6 +32,8 @@ protected:
 public:
     explicit Command(const char *cmd_line, bool isStopped = false);
 
+    explicit Command(const Command &cmd, bool isStopped = false);
+
     virtual ~Command();
 
     virtual void execute() = 0;
@@ -84,7 +86,7 @@ class PipeCommand : public Command {
     bool is_background;
 public:
     explicit PipeCommand(const char *cmd_line);
-    virtual ~PipeCommand() = default;
+    ~PipeCommand() override = default;
     void execute() override;
 };
 
@@ -92,7 +94,7 @@ class RedirectionCommand : public Command {
     // TODO: Add your data members
 public:
     explicit RedirectionCommand(const char *cmd_line);
-    virtual ~RedirectionCommand() = default;
+    ~RedirectionCommand() override = default;
     void execute() override;
     //void prepare() override;
     //void cleanup() override;
@@ -103,14 +105,14 @@ class ChangeDirCommand : public BuiltInCommand {
     char **plastPwd;
 public:
     explicit ChangeDirCommand(const char *cmd_line, char **plastPwd);
-    virtual ~ChangeDirCommand() {}
+    ~ChangeDirCommand() override;
     void execute() override;
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
 public:
     explicit GetCurrDirCommand(const char *cmd_line);
-    virtual ~GetCurrDirCommand() {}
+    ~GetCurrDirCommand() override = default;
     void execute() override;
 };
 
@@ -152,7 +154,7 @@ private:
     JobsList *job_list; //added pointer to job_list
 public:
     explicit KillCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~KillCommand() override = default; //made default {made from simple type var}
+    ~KillCommand() override = default; //made default {made from simple type var}
     void execute() override;
 };
 
@@ -162,7 +164,7 @@ private:
     JobsList *job_list;
 public:
     explicit ForegroundCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~ForegroundCommand() override = default; //made default {made from simple type var}
+    ~ForegroundCommand() override = default; //made default {made from simple type var}
     void execute() override;
 };
 
@@ -171,14 +173,14 @@ private:
     JobsList *job_list; //added pointer to job_list
 public:
     BackgroundCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~BackgroundCommand() override = default; //made default {made from simple type var}
+    ~BackgroundCommand() override = default; //made default {made from simple type var}
     void execute() override;
 };
 
 class CatCommand : public BuiltInCommand {
 public:
     CatCommand(const char *cmd_line);
-    virtual ~CatCommand() override = default; //made default {made from simple type var}
+    ~CatCommand() override = default; //made default {made from simple type var}
     void execute() override;
 };
 
@@ -189,7 +191,7 @@ public:
         Command *command;
         bool is_stopped; //changed becasue Command already hold job_id , to make easier to iterate both maps
     public :
-        explicit JobEntry(Command *cmd, bool is_stopped = false) :
+        JobEntry(Command *cmd, bool is_stopped = false) :
                 command(cmd), is_stopped(is_stopped) {};//add inline
         ~JobEntry() = default;
         Command *getCommand();
@@ -201,7 +203,7 @@ public:
        */
     };
 
-    map<int,JobEntry*> all_jobs;
+    map<int,JobEntry> all_jobs;
     list<pid_t> stopped_jobs;
     unordered_map<pid_t, int> pid_to_job_id;
 
@@ -219,10 +221,10 @@ public:
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
-    JobEntry *getJobById(int jobId);
+    JobEntry getJobById(int jobId);
     void removeJobById(int jobId);
-    JobEntry *getLastJob(int *lastJobId);
-    JobEntry *getLastStoppedJob(int *jobId);
+    JobEntry * getLastJob(int *lastJobId);
+    JobEntry * getLastStoppedJob(int *jobId);
     // TODO: Add extra methods or modify exisitng ones as needed
 };
 

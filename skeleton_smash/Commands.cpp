@@ -95,11 +95,12 @@ Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char 
     strcpy(this->command_name, cmd_line);
     this->command_parts_num = _parseCommandLine(s, this->command_parts); // commandParts without '&' sign.
     this->on_foreground = not _isBackgroundComamnd(cmd_line);
+    delete[] s;
 }
 
 Command::~Command() {
     for (int i = 0; i < this->command_parts_num; i++) {
-        delete this->command_parts[i];
+        delete[] this->command_parts[i];
     }
     delete[] this->command_parts;
     delete[] this->command_name;
@@ -302,10 +303,19 @@ void GetCurrDirCommand::execute() {
     char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
     getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
     cout << cwd << endl;
+    delete[] cwd;
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line)  {
     this->plastPwd = plastPwd;
+}
+
+ChangeDirCommand::~ChangeDirCommand() noexcept {
+
+    for (int i = 0; i < ((string)*this->plastPwd).length() ; i++) {
+        delete this->plastPwd[i];
+    }
+    delete[] this->plastPwd;
 }
 
 // TODO: handle errors properly
@@ -382,17 +392,17 @@ void KillCommand::execute() {
         perror("smash error: kill: invalid arguments");
         return;
     }
-    pid_t pid = this->job_list->all_jobs.find(job_id_n)->second->getCommand()->GetPid();
+    pid_t pid = this->job_list->all_jobs.find(job_id_n)->second.getCommand()->GetPid();
     if (kill(pid, -signal_n) == -1) {
         perror("smash error: kill failed");
         return;
     }
     if (-signal_n == SIGSTOP || -signal_n == SIGTSTP){
-        this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(true);
+        this->job_list->all_jobs.find(job_id_n)->second.getCommand()->SetIsStopped(true);
         this->job_list->stopped_jobs.push_back(pid);
     }
     else if (-signal_n == SIGCONT){
-        this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(false);
+        this->job_list->all_jobs.find(job_id_n)->second.getCommand()->SetIsStopped(false);
         this->job_list->stopped_jobs.remove(pid);
     }
     cout<<"signal number " <<-signal_n<< " was sent to pid "<<pid<<endl;
@@ -421,7 +431,7 @@ void ForegroundCommand::execute() {
             perror("smash error: fg: invalid arguments");
             return;
         }
-        pid = element->second->getCommand()->GetPid();
+        pid = element->second.getCommand()->GetPid();
     } else {
         if(this->job_list->all_jobs.empty()){
             perror("smash error: fg: jobs list is empty");
@@ -430,9 +440,9 @@ void ForegroundCommand::execute() {
         pid = this->job_list->getLastJob(&job_id_n)->getCommand()->GetPid();
     }
     SmallShell::getInstance().set_foreground_job(job_id_n);
-    this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetOnForeground(true);
+    this->job_list->all_jobs.find(job_id_n)->second.getCommand()->SetOnForeground(true);
     this->job_list->stopped_jobs.remove(pid);
-    cout << this->job_list->all_jobs.find(job_id_n)->second->getCommand()->GetCommandName() << " : " << pid << endl;
+    cout << this->job_list->all_jobs.find(job_id_n)->second.getCommand()->GetCommandName() << " : " << pid << endl;
     if (kill(pid, SIGCONT) == -1){
         perror("smash error: kill failed");
         return;
@@ -446,7 +456,6 @@ void BackgroundCommand::execute() {
     int job_id_n;
     pid_t pid;
     bool is_stopped;
-    JobsList::JobEntry *job_entry;
     if (this->command_parts_num > 1) {
         string job_id(this->command_parts[1]);
         char *char_part_job_id = nullptr;
@@ -463,7 +472,7 @@ void BackgroundCommand::execute() {
             perror(error_msg.c_str());
             return;
         }
-        is_stopped = job_it->second->getCommand()->IsStopped();
+        is_stopped = job_it->second.getCommand()->IsStopped();
         if (!is_stopped) {
             string error_msg = "smash error: bg: job-id ";
             error_msg+=job_id;
@@ -471,10 +480,10 @@ void BackgroundCommand::execute() {
             perror(error_msg.c_str());
             return;
         }
-        job_entry = job_it->second;
-        pid = job_it->second->getCommand()->GetPid();
+        JobsList::JobEntry job_entry = job_it->second;
+        pid = job_it->second.getCommand()->GetPid();
     } else {
-        job_entry = this->job_list->getLastStoppedJob(&job_id_n);
+        JobsList::JobEntry * job_entry = this->job_list->getLastStoppedJob(&job_id_n);
         if (job_entry == nullptr) {
            perror("smash error: bg: there is no stopped jobs to resume");
             return;
@@ -482,7 +491,7 @@ void BackgroundCommand::execute() {
         pid = job_entry->getCommand()->GetPid();
     }
     this->job_list->stopped_jobs.remove(pid);
-    this->job_list->all_jobs.find(job_id_n)->second->getCommand()->SetIsStopped(false);
+    this->job_list->all_jobs.find(job_id_n)->second.getCommand()->SetIsStopped(false);
     if(kill(pid, SIGCONT) == -1){
         perror("smash error: kill failed");
         return;
@@ -559,6 +568,7 @@ void ExternalCommand::execute() {
         delete[] s; // added this to avoid memory leak, seems to work just fine
         exit(0);//if reached here all good, if an error was made it will send a signal smash
     } else { // father
+        delete[] s;
         if (pid == -1) {
             perror("smash error: fork failed");
             return;
@@ -595,6 +605,8 @@ void JobsList::JobEntry::set_stopped_status(bool stopped) {
     this->is_stopped = stopped;
 }
 
+
+
 /**
  * implementation of jobList
  */
@@ -609,13 +621,13 @@ void JobsList::addJob(Command *cmd, bool isStopped) {
     }
     cmd->SetJobId(job_id);
     cmd->SetTime();
-    JobEntry *job_entry = new JobEntry(cmd, isStopped);
-    this->all_jobs.insert(*(new pair<int,JobEntry*>(job_id,job_entry)));
+    JobEntry job_entry(cmd, isStopped);
+    this->all_jobs.insert(pair<int,JobEntry>(job_id,job_entry));
     this->pid_to_job_id.insert(pair<pid_t, int>
-                                       (job_entry->getCommand()->GetPid(),
+                                       (job_entry.getCommand()->GetPid(),
                                         job_id));
     if (isStopped) {
-        this->stopped_jobs.push_back(job_entry->getCommand()->GetPid());
+        this->stopped_jobs.push_back(job_entry.getCommand()->GetPid());
     }
 }
 
@@ -623,11 +635,11 @@ void JobsList::printJobsList() {
     // delete all finished jobs:
     this->removeFinishedJobs();
     // print all current jobs:
-    for (pair<int, JobEntry*> element : this->all_jobs) {
-        cout << "[" << element.first << "]" << " " << element.second->getCommand()->GetCommandName() << " : " <<
-             element.second->getCommand()->GetPid() << " "
-             << difftime(time(nullptr), element.second->getCommand()->GetStartingTime()) << " secs";
-        if (element.second->getCommand()->IsStopped()) {
+    for (pair<int, JobEntry> element : this->all_jobs) {
+        cout << "[" << element.first << "]" << " " << element.second.getCommand()->GetCommandName() << " : " <<
+             element.second.getCommand()->GetPid() << " "
+             << difftime(time(nullptr), element.second.getCommand()->GetStartingTime()) << " secs";
+        if (element.second.getCommand()->IsStopped()) {
             cout << "(stopped)";
         }
         cout << endl;
@@ -638,13 +650,13 @@ void JobsList::killAllJobs() {
     int num_of_jobs = this->all_jobs.size();
     cout<<"smash: sending SIGKILL signal to "<<num_of_jobs<<" jobs:"<<endl;
     for_each(this->all_jobs.begin(), this->all_jobs.end(),
-                  [](pair<int , JobEntry*> element){
-                      if (kill(element.second->getCommand()->GetPid(),SIGKILL) == -1){
+                  [](pair<int , JobEntry> element){
+                      if (kill(element.second.getCommand()->GetPid(),SIGKILL) == -1){
                           perror("smash error: kill failed");
                           return;
                       }
-                      string command_name(element.second->getCommand()->GetCommandName());
-                      cout<<element.second->getCommand()->GetPid()<<": "<<command_name<<endl;
+                      string command_name(element.second.getCommand()->GetCommandName());
+                      cout<<element.second.getCommand()->GetPid()<<": "<<command_name<<endl;
     });
 }
 
@@ -653,6 +665,9 @@ void JobsList::removeFinishedJobs() {
     if(this->all_jobs.empty())return;
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
         int job_to_remove = this->pid_to_job_id.find(stopped)->second;
+        //////
+        delete this->all_jobs.find(job_to_remove)->second.getCommand();
+        //////
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
     }
@@ -660,7 +675,7 @@ void JobsList::removeFinishedJobs() {
     pid_t pid ;
     if(job_id==-1) return;
     else{
-        pid = this->all_jobs.find(job_id)->second->getCommand()->GetPid();
+        pid = this->all_jobs.find(job_id)->second.getCommand()->GetPid();
         if(waitpid(pid, nullptr,WNOHANG)==-1){
             SmallShell::getInstance().set_foreground_job(-1);
             SmallShell::getInstance().getJobList()->removeJobById(job_id);
@@ -668,29 +683,29 @@ void JobsList::removeFinishedJobs() {
     }
 }
 
-JobsList::JobEntry *JobsList::getJobById(int jobId) {
+JobsList::JobEntry JobsList::getJobById(int jobId) {
     return this->all_jobs.find(jobId)->second;
 }
 
 void JobsList::removeJobById(int jobId) {
-    pid_t pid = this->all_jobs.find(jobId)->second->getCommand()->GetPid();
+    pid_t pid = this->all_jobs.find(jobId)->second.getCommand()->GetPid();
     this->all_jobs.erase(jobId);
     this->pid_to_job_id.erase(pid);
 }
 
-JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
+JobsList::JobEntry * JobsList::getLastJob(int *lastJobId) {
     if(lastJobId!= nullptr) {
         *lastJobId = this->all_jobs.rbegin()->first;
     }
-    return this->all_jobs.rbegin()->second;
+    return &this->all_jobs.rbegin()->second;
 }
 
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
+JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
     if (this->stopped_jobs.empty()) {
         return nullptr;
     }
     *jobId = this->pid_to_job_id.find(this->stopped_jobs.back())->second;
-    return this->all_jobs.find(*jobId)->second;
+    return &this->all_jobs.find(*jobId)->second;
 }
 
 /**
@@ -794,9 +809,16 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     Command *cmd = CreateCommand(cmd_line);
-    if (!cmd)return;//check if valid
+    if (!cmd) return;//check if valid
     this->jobs_list->removeFinishedJobs();
     cmd->execute();
+    //////
+    if (!_isBackgroundComamnd(cmd_line)){
+        delete cmd;
+    }
+    //////
+    // delete cmd;
+
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
@@ -833,9 +855,9 @@ int SmallShell::getForegroundJob() {
 void SmallShell::stop_foreground() {
     this->jobs_list->removeFinishedJobs();
     if (this->getForegroundJob() == -1) return;
-    pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
+    pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->GetPid();
     this->jobs_list->stopped_jobs.push_back(foreground_pid);
-    this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->SetIsStopped(true);
+    this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->SetIsStopped(true);
     cout << "smash: process " << foreground_pid << " was stopped" << endl;
     if (kill(foreground_pid, SIGSTOP) == -1){
         perror("smash error: kill failed");
@@ -847,7 +869,7 @@ void SmallShell::stop_foreground() {
 void SmallShell::kill_foreground() {
     this->jobs_list->removeFinishedJobs();
     if (this->getForegroundJob() == -1) return;
-    pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second->getCommand()->GetPid();
+    pid_t foreground_pid = this->jobs_list->all_jobs.find(this->job_on_foreground)->second.getCommand()->GetPid();
     cout << "smash: process " << foreground_pid <<" was killed"  << endl;
     if(kill(foreground_pid, SIGKILL) == -1){
         perror("smash error: kill failed");
