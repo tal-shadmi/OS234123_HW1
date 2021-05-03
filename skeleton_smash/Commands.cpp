@@ -95,6 +95,7 @@ Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char 
     strcpy(this->command_name, cmd_line);
     this->command_parts_num = _parseCommandLine(s, this->command_parts); // commandParts without '&' sign.
     this->on_foreground = not _isBackgroundComamnd(cmd_line);
+    delete[] s;
 }
 
 Command::~Command() {
@@ -302,6 +303,7 @@ void GetCurrDirCommand::execute() {
     char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
     getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
     cout << cwd << endl;
+    delete[] cwd;
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line)  {
@@ -559,6 +561,7 @@ void ExternalCommand::execute() {
         delete[] s; // added this to avoid memory leak, seems to work just fine
         exit(0);//if reached here all good, if an error was made it will send a signal smash
     } else { // father
+        delete[] s; // added this to avoid memory leak, seems to work just fine
         if (pid == -1) {
             perror("smash error: fork failed");
             return;
