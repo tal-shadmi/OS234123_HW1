@@ -100,7 +100,7 @@ Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char 
 
 Command::~Command() {
     for (int i = 0; i < this->command_parts_num; i++) {
-        delete[] this->command_parts[i];
+        free (this->command_parts[i]);
     }
     delete[] this->command_parts;
     delete[] this->command_name;
@@ -812,11 +812,14 @@ void SmallShell::executeCommand(const char *cmd_line) {
     if (!cmd) return;//check if valid
     this->jobs_list->removeFinishedJobs();
     cmd->execute();
-    //////
+    /*//////
     if (!_isBackgroundComamnd(cmd_line)){
         delete cmd;
     }
-    //////
+    //////*/
+    if (!SmallShell::getInstance().jobs_list->all_jobs.count(cmd->GetJobId())){
+        delete cmd;
+    }
     // delete cmd;
 
     // Please note that you must fork smash process for some commands (e.g., external commands....)
