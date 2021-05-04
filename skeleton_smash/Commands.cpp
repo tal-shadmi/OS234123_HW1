@@ -86,15 +86,18 @@ void _removeBackgroundSign(char *cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h
 
-Command::Command(const char *cmd_line, bool isStopped) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
-                                                         command_name(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
-                                                         starting_time(time(nullptr)) {
+Command::Command(const char *cmd_line, bool is_stopped, bool on_timeout, int timeout_duration) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
+                                                                                                 command_name(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
+                                                                                                 starting_time(time(nullptr)) {
     char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])];
     strcpy(s, cmd_line);
     _removeBackgroundSign(s);
     strcpy(this->command_name, cmd_line);
     this->command_parts_num = _parseCommandLine(s, this->command_parts); // commandParts without '&' sign.
     this->on_foreground = not _isBackgroundComamnd(cmd_line);
+    this->is_stopped = is_stopped;
+    this->on_timeout = on_timeout;
+    this->timeout_duration = timeout_duration;
     delete[] s;
 }
 
@@ -157,6 +160,14 @@ void Command::SetTime() {
 
 time_t Command::GetStartingTime() {
     return this->starting_time;
+}
+
+void Command::SetOnTimeout() {
+    this->on_timeout = true;
+}
+
+void Command::SetTimeoutDuration(int duration) {
+    this->timeout_duration = duration;
 }
 
 /**
@@ -310,14 +321,6 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : Buil
     this->plastPwd = plastPwd;
 }
 
-ChangeDirCommand::~ChangeDirCommand() noexcept {
-
-    for (int i = 0; i < ((string)*this->plastPwd).length() ; i++) {
-        delete this->plastPwd[i];
-    }
-    delete[] this->plastPwd;
-}
-
 void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in the right placed
     if (this->command_parts_num == 1){
         return;
@@ -387,7 +390,7 @@ void KillCommand::execute() {
         perror(error_msg.c_str());
         return;
     }
-    if (-signal_n < 0 || -signal_n > 31 || string(char_part_signal)!=""||string(char_part_job_id)!="") {
+    if (string(char_part_signal)!=""||string(char_part_job_id)!="") {
         perror("smash error: kill: invalid arguments");
         return;
     }
@@ -576,6 +579,9 @@ void ExternalCommand::execute() {
         // set child pid and add job to the list
         this->SetPid(pid);
         SmallShell::getInstance().add_to_job_list(this);
+        if (this->on_timeout){
+            SmallShell::getInstance().add_to_time_out(this,(time_t)this->timeout_duration);
+        }
         if (!this->is_background){
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
@@ -598,11 +604,13 @@ void TimeoutCommand::execute() {
     int pos = cmd.find(sub_cmd);
 
     Command * command = SmallShell::getInstance().CreateCommand(cmd.substr(pos,cmd.length()).c_str());
+    command->SetOnTimeout();
+    command->SetTimeoutDuration(duration_n);
     if (!command) return;//check if valid
     SmallShell::getInstance().getJobList()->removeFinishedJobs();
     alarm(duration_n);
     command->execute();
-    SmallShell::getInstance().add_to_time_out(command,(time_t)duration_n);
+    //SmallShell::getInstance().add_to_time_out(command,(time_t)duration_n);
 
 }
 
@@ -684,13 +692,11 @@ void JobsList::killAllJobs() {
 }
 
 void JobsList::removeFinishedJobs() {
-    pid_t stopped;// = waitpid(-1, nullptr, WNOHANG);
+    pid_t stopped;
     if(this->all_jobs.empty())return;
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
         int job_to_remove = this->pid_to_job_id.find(stopped)->second;
-        //////
         delete this->all_jobs.find(job_to_remove)->second.getCommand();
-        //////
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
     }
@@ -794,37 +800,37 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     else if (cmd_s.find('|') != string::npos) {
         return new PipeCommand(cmd_line);
     }
-    else if (firstWord == "timeout"){
+    else if (firstWord == "timeout" || firstWord == "timeout&"){
         return new TimeoutCommand(cmd_line);
     }
-    else if (firstWord == "cat"){
+    else if (firstWord == "cat" || firstWord == "cat&"){
         return new CatCommand(cmd_line);
     }
-    else if (firstWord == "chprompt") {
+    else if (firstWord == "chprompt" || firstWord == "chprompt&") {
         return new ChangePromptCommand(cmd_line);
     }
-    else if (firstWord == "showpid") {
+    else if (firstWord == "showpid" || firstWord == "showpid&") {
         return new ShowPidCommand(cmd_line);
     }
-    else if (firstWord == "pwd") {
+    else if (firstWord == "pwd" || firstWord == "pwd&") {
         return new GetCurrDirCommand(cmd_line);
     }
-    else if (firstWord == "cd") {
+    else if (firstWord == "cd" || firstWord == "cd&") {
         return new ChangeDirCommand(cmd_line, (char **) this->last_path.c_str());
     }
-    else if (firstWord == "jobs"){
+    else if (firstWord == "jobs" || firstWord == "jobs&"){
         return new JobsCommand(cmd_line,this->jobs_list);
     }
-    else if (firstWord == "kill"){
+    else if (firstWord == "kill" || firstWord == "kill&"){
         return new KillCommand(cmd_line, this->jobs_list);
     }
-    else if (firstWord == "fg"){
+    else if (firstWord == "fg" || firstWord == "fg&"){
         return new ForegroundCommand(cmd_line,this->jobs_list);
     }
-    else if (firstWord == "bg"){
+    else if (firstWord == "bg" || firstWord == "bg&"){
         return new BackgroundCommand(cmd_line, this->jobs_list);
     }
-    else if (firstWord == "quit"){
+    else if (firstWord == "quit" || firstWord == "quit&"){
         return new QuitCommand(cmd_line, this->jobs_list);
     }
     else {
@@ -838,17 +844,9 @@ void SmallShell::executeCommand(const char *cmd_line) {
     if (!cmd) return;//check if valid
     this->jobs_list->removeFinishedJobs();
     cmd->execute();
-    /*//////
-    if (!_isBackgroundComamnd(cmd_line)){
-        delete cmd;
-    }
-    //////*/
     if (!SmallShell::getInstance().jobs_list->all_jobs.count(cmd->GetJobId())){
         delete cmd;
     }
-    // delete cmd;
-
-    // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
 string SmallShell::getPromptName() {

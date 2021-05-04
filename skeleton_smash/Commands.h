@@ -25,14 +25,13 @@ protected:
     pid_t pid = 0;
     int job_id = 0; //added job_id to Command class for easier handling with
                     // command method andjob list hierarchy
-    bool is_stopped = false;
+    bool is_stopped;
     bool on_foreground;
-
+    bool on_timeout;
+    int timeout_duration;
 
 public:
-    explicit Command(const char *cmd_line, bool isStopped = false);
-
-    explicit Command(const Command &cmd, bool isStopped = false);
+    explicit Command(const char *cmd_line, bool is_stopped = false, bool on_timeout = false, int timeout_duration = NULL);
 
     virtual ~Command();
 
@@ -61,6 +60,10 @@ public:
     void SetTime();
 
     time_t GetStartingTime();
+
+    void SetOnTimeout();
+
+    void SetTimeoutDuration(int duration);
 
     //virtual void prepare();
     //virtual void cleanup();
@@ -105,7 +108,7 @@ class ChangeDirCommand : public BuiltInCommand {
     char **plastPwd;
 public:
     explicit ChangeDirCommand(const char *cmd_line, char **plastPwd);
-    ~ChangeDirCommand() override;
+    ~ChangeDirCommand() override = default;
     void execute() override;
 };
 
