@@ -321,7 +321,7 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : Buil
     this->plastPwd = plastPwd;
 }
 
-void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in the right placed
+void ChangeDirCommand::execute() {
     if (this->command_parts_num == 1){
         return;
     } else if (this->command_parts_num > 2) {
@@ -367,6 +367,9 @@ void ChangeDirCommand::execute() {//only changes made was to add "{" &  "}" in t
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void JobsCommand::execute() {
+    if (this->on_timeout){
+        SmallShell::getInstance().add_to_time_out(this,(time_t)this->timeout_duration);
+    }
     this->job_list->removeFinishedJobs();
     this->job_list->printJobsList();
 }
@@ -374,7 +377,6 @@ void JobsCommand::execute() {
 KillCommand::KillCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void KillCommand::execute() {
-
     string job_id(this->command_parts[2]);
     char *char_part_job_id = nullptr;
     auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
@@ -413,8 +415,6 @@ void KillCommand::execute() {
 ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void ForegroundCommand::execute() {
-
-    //TODO : check if negative number error
     int job_id_n;
     pid_t pid;
     if (this->command_parts_num > 1) {
@@ -422,7 +422,7 @@ void ForegroundCommand::execute() {
         char *char_part_job_id = nullptr;
         job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
         auto element = this->job_list->all_jobs.find(job_id_n);
-        if ((job_id_n <= 0 ||element == this->job_list->all_jobs.end())&&string(char_part_job_id)==""){
+        if ((job_id_n <= 0 ||element == this->job_list->all_jobs.end()) && string(char_part_job_id) == ""){
             string error_msg = "smash error: kill: job-id ";
             error_msg+=job_id;
             error_msg+= " does not exist";
@@ -643,7 +643,6 @@ void JobsList::JobEntry::set_stopped_status(bool stopped) {
  */
 
 void JobsList::addJob(Command *cmd, bool isStopped) {
-    // this->removeFinishedJobs(); //changed to handle JobEntry diffrent struct
     int job_id;
     if (this->all_jobs.empty()) {
         job_id = 1;
@@ -755,46 +754,10 @@ SmallShell::SmallShell() {
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
-
-    /* add missind commands , it's basicly the same just more elegant*/
-    /*if (cmd_s.empty()) {
-        return nullptr;
-    }
-    if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
-                                             //If no matches were found, the function returns string::npos.
-        return new RedirectionCommand(cmd_line);
-    } else if (cmd_s.find('|') != string::npos) {
-        return new PipeCommand(cmd_line);
-    }
-    else if (cmd_s.find("cat ") == 0 || cmd_s.find("cat\n") == 0){
-        return new CatCommand(cmd_line);
-    } else if (cmd_s.find("chprompt ") == 0 || cmd_s.find("chprompt\n") == 0) {//add chprompt
-        return new ChangePromptCommand(cmd_line);
-    } else if (cmd_s.find("showpid ") == 0 || cmd_s.find("showpid\n") == 0) {
-        return new ShowPidCommand(cmd_line);
-    } else if (cmd_s.find("pwd ") == 0 || cmd_s.find("pwd\n") == 0) {
-        return new GetCurrDirCommand(cmd_line);
-    } else if (cmd_s.find("cd ") == 0 || cmd_s.find("cd\n") == 0) {
-        return new ChangeDirCommand(cmd_line, (char **) this->last_path.c_str());
-    } else if (cmd_s.find("jobs\n") == 0) {
-        return new JobsCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("kill ") == 0 || cmd_s.find("kill\n") == 0) {
-        return new KillCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("fg ") == 0 || cmd_s.find("fg\n") == 0) {
-        return new ForegroundCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("bg ") == 0 || cmd_s.find("bg\n") == 0) {
-        return new BackgroundCommand(cmd_line, this->jobs_list);
-    } else if (cmd_s.find("quit ") == 0 || cmd_s.find("quit\n") == 0) {
-        return new QuitCommand(cmd_line, this->jobs_list);
-    } else {
-        return new ExternalCommand(cmd_line);
-    }*/
-
     if (cmd_s.empty()) {
         return nullptr;
     }
-    else if (cmd_s.find('>') != string::npos) {//used string method to find if exixt in cmd
-                                             //If no matches were found, the function returns string::npos.
+    else if (cmd_s.find('>') != string::npos) {
         return new RedirectionCommand(cmd_line);
     }
     else if (cmd_s.find('|') != string::npos) {
