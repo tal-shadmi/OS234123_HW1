@@ -333,7 +333,10 @@ void ChangeDirCommand::execute() {
             return;
         }
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
-        getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
+        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH) == nullptr){
+            perror("smash error: getcwd failed");
+            return;
+        }
         if (chdir(*this->plastPwd) == -1) {
             perror("smash error: chdir failed");
             return;
@@ -342,7 +345,10 @@ void ChangeDirCommand::execute() {
         *this->plastPwd = cwd ;
     } else if (string(this->command_parts[1]) == "..") {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
-        getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
+        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH)){
+            perror("smash error: getcwd failed");
+            return;
+        }
         string path = string(this->command_parts[1]);
         unsigned int last_file_start_pos = path.find_last_of('/');
         string new_path = path.substr(0, last_file_start_pos);
@@ -354,7 +360,10 @@ void ChangeDirCommand::execute() {
         *this->plastPwd = cwd;
     } else {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
-        getcwd(cwd, COMMAND_ARGS_MAX_LENGTH);
+        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH)){
+            perror("smash error: getcwd failed");
+            return;
+        }
         if (chdir(this->command_parts[1]) == -1) {
             perror("smash error: chdir failed");
             return;
@@ -422,15 +431,15 @@ void ForegroundCommand::execute() {
         char *char_part_job_id = nullptr;
         job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
         auto element = this->job_list->all_jobs.find(job_id_n);
+        if(this->command_parts_num > 2 || string(char_part_job_id) != ""){
+            perror("smash error: fg: invalid arguments");
+            return;
+        }
         if ((job_id_n <= 0 ||element == this->job_list->all_jobs.end()) && string(char_part_job_id) == ""){
             string error_msg = "smash error: kill: job-id ";
             error_msg+=job_id;
             error_msg+= " does not exist";
             perror(error_msg.c_str());
-            return;
-        }
-        if(this->command_parts_num>2||string(char_part_job_id)!=""){
-            perror("smash error: fg: invalid arguments");
             return;
         }
         pid = element->second.getCommand()->GetPid();
@@ -701,10 +710,10 @@ void JobsList::removeFinishedJobs() {
     }
     int job_id = SmallShell::getInstance().getForegroundJob();
     pid_t pid ;
-    if(job_id==-1) return;
+    if(job_id == -1) return;
     else{
         pid = this->all_jobs.find(job_id)->second.getCommand()->GetPid();
-        if(waitpid(pid, nullptr,WNOHANG)==-1){
+        if(waitpid(pid, nullptr,WNOHANG) == -1){
             SmallShell::getInstance().set_foreground_job(-1);
             SmallShell::getInstance().getJobList()->removeJobById(job_id);
         }
@@ -891,7 +900,10 @@ void SmallShell::kill_time_out() {
         return;
     }
     pid_t to_pid = this->timeout_jobs.begin()->second.pid;
-    kill(to_pid, SIGKILL);
+    if (kill(to_pid, SIGKILL) == -1){
+        perror("smash error: kill failed");
+        return;
+    }
     cout << "smash: " << this->timeout_jobs.begin()->second.command_name << endl;
     this->jobs_list->removeFinishedJobs();
     this->timeout_jobs.erase(this->timeout_jobs.begin());
