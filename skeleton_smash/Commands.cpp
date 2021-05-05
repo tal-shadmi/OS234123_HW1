@@ -555,7 +555,7 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line),
 
 void ExternalCommand::execute() {
     char* argv[4];
-    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])]; // needs decision on how to initialize s
+    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])];
     strcpy(s, this->command_name);
     _removeBackgroundSign(s);
     argv[0] = (char*)"/bin/bash";
@@ -567,18 +567,18 @@ void ExternalCommand::execute() {
     if (pid == 0) { // child
         setpgrp();
         execv(argv[0], argv);
-        delete[] s; // added this to avoid memory leak, seems to work just fine
-        exit(0);//if reached here all good, if an error was made it will send a signal smash
+        delete[] s;
+        exit(0); //if reached here all good, if an error was made it will send a signal smash
     } else { // father
         delete[] s;
         if (pid == -1) {
             perror("smash error: fork failed");
             return;
         }
-        // TODO: maybe we should send a pointer to wait to get the exit status of the child
         // set child pid and add job to the list
         this->SetPid(pid);
         SmallShell::getInstance().add_to_job_list(this);
+        // if command expects timeout add to the map of timeout jobs
         if (this->on_timeout){
             SmallShell::getInstance().add_to_time_out(this,(time_t)this->timeout_duration);
         }
@@ -604,14 +604,18 @@ void TimeoutCommand::execute() {
     int pos = cmd.find(sub_cmd);
 
     Command * command = SmallShell::getInstance().CreateCommand(cmd.substr(pos,cmd.length()).c_str());
+    // the command now holds the information that an alarm has been set for it and also how much time the alarm has been set for:
     command->SetOnTimeout();
     command->SetTimeoutDuration(duration_n);
-    if (!command) return;//check if valid
+    if (!command) return;
     SmallShell::getInstance().getJobList()->removeFinishedJobs();
-    alarm(duration_n);
+    // if there are no jobs on timeout already || time to closest alarm is bigger than time of current requested alarm to set:
+    // set requested alarm
+    if (SmallShell::getInstance().getTimeoutJobs()->empty() ||
+        SmallShell::getInstance().getTimeoutJobs()->begin()->first - time(nullptr) > duration_n){
+        alarm(duration_n);
+    }
     command->execute();
-    //SmallShell::getInstance().add_to_time_out(command,(time_t)duration_n);
-
 }
 
 /**
@@ -630,13 +634,9 @@ bool JobsList::JobEntry::operator!=(const JobEntry &job_entry) const {
     return this->command->GetPid() != job_entry.command->GetPid();
 }
 
-
-
 void JobsList::JobEntry::set_stopped_status(bool stopped) {
     this->is_stopped = stopped;
 }
-
-
 
 /**
  * implementation of jobList
@@ -793,7 +793,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     if (cmd_s.empty()) {
         return nullptr;
     }
-    else if (cmd_s.find('>') != string::npos) {//used string method to find if exixst in cmd
+    else if (cmd_s.find('>') != string::npos) {//used string method to find if exixt in cmd
                                              //If no matches were found, the function returns string::npos.
         return new RedirectionCommand(cmd_line);
     }
@@ -880,8 +880,7 @@ void SmallShell::add_to_time_out(Command *cmd, time_t duration) {
     toc.command_name+=" timed out!";
     time_t expected_finish_time = duration + cmd->GetStartingTime();
     toc.pid = cmd->GetPid();
-    this->jobs_time_out.insert(pair<time_t,time_out_command>(expected_finish_time,toc));
-    /*if();*/
+    this->timeout_jobs.insert(pair<time_t,time_out_command>(expected_finish_time,toc));
 }
 
 void SmallShell::set_foreground_job(int job_id) {
@@ -890,6 +889,10 @@ void SmallShell::set_foreground_job(int job_id) {
 
 int SmallShell::getForegroundJob() {
     return this->job_on_foreground;
+}
+
+map<time_t, SmallShell::time_out_command> *SmallShell::getTimeoutJobs() {
+    return &this->timeout_jobs;
 }
 
 void SmallShell::stop_foreground() {
@@ -921,14 +924,18 @@ void SmallShell::kill_foreground() {
 }
 
 void SmallShell::kill_time_out() {
-    if (this->jobs_time_out.empty()){
+    if (this->timeout_jobs.empty()){
         return;
     }
-    pid_t to_pid = this->jobs_time_out.begin()->second.pid;
+    pid_t to_pid = this->timeout_jobs.begin()->second.pid;
     kill(to_pid, SIGKILL);
-    cout << "smash: " << this->jobs_time_out.begin()->second.command_name << endl;
+    cout << "smash: " << this->timeout_jobs.begin()->second.command_name << endl;
     this->jobs_list->removeFinishedJobs();
-    this->jobs_time_out.erase(this->jobs_time_out.begin());
+    this->timeout_jobs.erase(this->timeout_jobs.begin());
+    // if timeout job list is still not empty we will set an alarm to the next timeout job
+    if (!this->timeout_jobs.empty()){
+        alarm(this->timeout_jobs.begin()->first - time(nullptr));
+    }
 }
 
 

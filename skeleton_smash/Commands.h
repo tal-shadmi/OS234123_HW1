@@ -13,6 +13,7 @@ using namespace std;
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
+#define NO_TIMEOUT_DURATION (-1)
 
 class JobsList; //decalared
 
@@ -27,47 +28,32 @@ protected:
                     // command method andjob list hierarchy
     bool is_stopped;
     bool on_foreground;
+    // added on_timeout field for the command, true if on_timeout false if not
+    // added timeout duration field for the command, holds duration of timeout if exists else -1
     bool on_timeout;
     int timeout_duration;
 
 public:
-    explicit Command(const char *cmd_line, bool is_stopped = false, bool on_timeout = false, int timeout_duration = NULL);
-
+    explicit Command(const char *cmd_line, bool is_stopped = false, bool on_timeout = false, int timeout_duration = NO_TIMEOUT_DURATION);
     virtual ~Command();
-
     virtual void execute() = 0;
-
     friend ostream &operator<<(ostream &os, Command const &command);// so we could print
-
     void SetPid(pid_t pid);
-
     pid_t GetPid();
-
     int GetJobId();
-
     void SetJobId(int new_job_id);
-
     bool IsStopped();
-
     void SetIsStopped(bool stopped);
-
     char *GetCommandName();
-
     bool GetOnForeground();
-
     void SetOnForeground(bool on_foreground);
-
     void SetTime();
-
     time_t GetStartingTime();
-
+    // added SetOnTimeout function to change on_timeout field of command value to true
     void SetOnTimeout();
-
+    // added SetTimeoutDuration function to set the duration until timeout for the command
     void SetTimeoutDuration(int duration);
 
-    //virtual void prepare();
-    //virtual void cleanup();
-    // TODO: Add your extra methods if needed
 };
 
 class BuiltInCommand : public Command {
@@ -79,6 +65,7 @@ public:
 class ExternalCommand : public Command {
     bool is_background;
     string cmd_line;
+
 public:
     explicit ExternalCommand(const char *cmd_line);
     ~ExternalCommand() override = default; //made default {made from simple type var}
@@ -87,6 +74,7 @@ public:
 
 class PipeCommand : public Command {
     bool is_background;
+
 public:
     explicit PipeCommand(const char *cmd_line);
     ~PipeCommand() override = default;
@@ -94,18 +82,16 @@ public:
 };
 
 class RedirectionCommand : public Command {
-    // TODO: Add your data members
+
 public:
     explicit RedirectionCommand(const char *cmd_line);
     ~RedirectionCommand() override = default;
     void execute() override;
-    //void prepare() override;
-    //void cleanup() override;
 };
 
 class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
     char **plastPwd;
+
 public:
     explicit ChangeDirCommand(const char *cmd_line, char **plastPwd);
     ~ChangeDirCommand() override = default;
@@ -113,13 +99,15 @@ public:
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
+
 public:
     explicit GetCurrDirCommand(const char *cmd_line);
     ~GetCurrDirCommand() override = default;
     void execute() override;
 };
 
-class ChangePromptCommand : public BuiltInCommand { //added new class to handle chprompt
+class ChangePromptCommand : public BuiltInCommand {
+
 public:
     explicit ChangePromptCommand(const char* cmd_line);
     ~ChangePromptCommand() override = default;
@@ -127,6 +115,7 @@ public:
 };
 
 class ShowPidCommand : public BuiltInCommand {
+
 public:
     explicit ShowPidCommand(const char *cmd_line);
     ~ShowPidCommand() override = default;
@@ -134,9 +123,9 @@ public:
 };
 
 class QuitCommand : public BuiltInCommand {
-private:
+
     JobsList *job_list;
-// TODO: Add your data members public:
+
 public:
     explicit QuitCommand(const char *cmd_line, JobsList *jobs);
     ~QuitCommand() override = default;
@@ -144,17 +133,19 @@ public:
 };
 
 class JobsCommand : public BuiltInCommand {
-private:
-    JobsList *job_list; //added pointer to job_list
+
+    JobsList *job_list;
+
 public:
     explicit JobsCommand(const char *cmd_line, JobsList *jobs);
-    ~JobsCommand() override = default; //made default {made from simple type var}
+    ~JobsCommand() override = default;
     void execute() override;
 };
 
 class KillCommand : public BuiltInCommand {
-private:
-    JobsList *job_list; //added pointer to job_list
+
+    JobsList *job_list;
+
 public:
     explicit KillCommand(const char *cmd_line, JobsList *jobs);
     ~KillCommand() override = default; //made default {made from simple type var}
@@ -162,9 +153,9 @@ public:
 };
 
 class ForegroundCommand : public BuiltInCommand {
-    // TODO: Add your data members
-private:
+
     JobsList *job_list;
+
 public:
     explicit ForegroundCommand(const char *cmd_line, JobsList *jobs);
     ~ForegroundCommand() override = default; //made default {made from simple type var}
@@ -172,61 +163,53 @@ public:
 };
 
 class BackgroundCommand : public BuiltInCommand {
-private:
-    JobsList *job_list; //added pointer to job_list
+
+    JobsList *job_list;
+
 public:
     BackgroundCommand(const char *cmd_line, JobsList *jobs);
-    ~BackgroundCommand() override = default; //made default {made from simple type var}
+    ~BackgroundCommand() override = default;
     void execute() override;
 };
 
 class CatCommand : public BuiltInCommand {
+
 public:
-    CatCommand(const char *cmd_line);
-    ~CatCommand() override = default; //made default {made from simple type var}
+    explicit CatCommand(const char *cmd_line);
+    ~CatCommand() override = default;
     void execute() override;
 };
 
 class TimeoutCommand : public Command {
+
 public:
-    TimeoutCommand(const char *cmd_line);
+    explicit TimeoutCommand(const char *cmd_line);
     ~TimeoutCommand() override = default ;
     void  execute() override ;
 };
 
 
 class JobsList {
+
 public:
     class JobEntry {
-        // TODO: Add your data members
         Command *command;
-        bool is_stopped; //changed becasue Command already hold job_id , to make easier to iterate both maps
+        bool is_stopped;
     public :
-        JobEntry(Command *cmd, bool is_stopped = false) :
-                command(cmd), is_stopped(is_stopped) {};//add inline
+        explicit JobEntry(Command *cmd, bool is_stopped = false) : command(cmd), is_stopped(is_stopped) {};
         ~JobEntry() = default;
         Command *getCommand();
-        bool stopped() const; //handle new bool
-        bool operator!=(const JobEntry &job_entry) const; //to compare to job_entry
-        void set_stopped_status(bool stopped); //handle new bool
-        /*
-       * TODO: need to add signals table and running status (finished execution or not)
-       */
+        bool stopped() const;
+        bool operator!=(const JobEntry &job_entry) const;
+        void set_stopped_status(bool stopped);
     };
 
-    map<int,JobEntry> all_jobs;
-    list<pid_t> stopped_jobs;
-    unordered_map<pid_t, int> pid_to_job_id;
-
-    /*
-     * changed all_jobs and stopped_jobs to map sorted by job_id
-     * last stop_will be the last job added to stopped_jobs
-     * unordered_map for pid_to_job_id , uses hash to store node so its easier to iterate
-     *
-     * */
+    map<int,JobEntry> all_jobs; // map of all jobs - key: job id, data: JobEntry object
+    list<pid_t> stopped_jobs; // list of stopped jobs
+    unordered_map<pid_t, int> pid_to_job_id; // unordered map of job id with it's appropriate pid - key: process pid, data: job id
 
 public:
-    JobsList() = default; //made default {made from simple type var}
+    JobsList() = default;
     ~JobsList() = default;
     void addJob(Command *cmd, bool isStopped = false);
     void printJobsList();
@@ -236,7 +219,6 @@ public:
     void removeJobById(int jobId);
     JobEntry * getLastJob(int *lastJobId);
     JobEntry * getLastStoppedJob(int *jobId);
-    // TODO: Add extra methods or modify exisitng ones as needed
 };
 
 
@@ -246,13 +228,12 @@ private:
         pid_t pid;
         string command_name;
     };
-    JobsList *jobs_list; // changed from jobs -> jobs_list
-    string prompt_name = "smash";//add default starting name
+    JobsList *jobs_list;
+    string prompt_name = "smash";
     pid_t pid;
     string last_path;
-    int job_on_foreground; //curr job on foreground , for ctrl+c / ctrl+z handlers
-    map<time_t , time_out_command > jobs_time_out;
-
+    int job_on_foreground;
+    map<time_t, time_out_command> timeout_jobs;
 
     SmallShell();
 
@@ -271,7 +252,7 @@ public:
     void executeCommand(const char *cmd_line);
     string getPromptName();
     void setPromptName(string newPromptName);
-    void add_to_job_list(Command *cmd); // just to make it easier to add new jobs
+    void add_to_job_list(Command *cmd);
     void add_to_time_out(Command *cmd , time_t duration);
     void set_foreground_job(int job_id);
     int getForegroundJob();
@@ -280,6 +261,7 @@ public:
     void kill_time_out();
     pid_t get_pid() const;
     JobsList *getJobList();
+    map<time_t, time_out_command> *getTimeoutJobs();
 };
 
 #endif //SMASH_COMMAND_H_
