@@ -89,7 +89,7 @@ void _removeBackgroundSign(char *cmd_line) {
 Command::Command(const char *cmd_line, bool is_stopped, bool on_timeout, int timeout_duration) : command_parts(new char *[COMMAND_MAX_ARGS + 1]),
                                                                                                  command_name(new char[COMMAND_ARGS_MAX_LENGTH + 1]),
                                                                                                  starting_time(time(nullptr)) {
-    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])];
+    char *s = new char[string(cmd_line).length()];
     strcpy(s, cmd_line);
     _removeBackgroundSign(s);
     strcpy(this->command_name, cmd_line);
@@ -390,6 +390,10 @@ void JobsCommand::execute() {
 KillCommand::KillCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), job_list(jobs) {}
 
 void KillCommand::execute() {
+    if (command_parts_num < 3){
+        perror("smash error: kill: invalid arguments");
+        return;
+    }
     string job_id(this->command_parts[2]);
     char *char_part_job_id = nullptr;
     auto job_id_n = strtol(job_id.data(), &char_part_job_id, 10);
@@ -568,7 +572,7 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line),
 
 void ExternalCommand::execute() {
     char* argv[4];
-    char *s = new char[sizeof(cmd_line) / sizeof(cmd_line[0])];
+    char *s = new char[string(cmd_line).length()];
     strcpy(s, this->command_name);
     _removeBackgroundSign(s);
     argv[0] = (char*)"/bin/bash";
@@ -610,6 +614,10 @@ void ExternalCommand::execute() {
 TimeoutCommand::TimeoutCommand(const char *cmd_line) : Command(cmd_line) {};
 
 void TimeoutCommand::execute() {
+    if (this->command_parts_num < 3){
+        perror("smash error: timeout: invalid arguments");
+        return;
+    }
     string duration(this->command_parts[1]);
     char *char_part_duration = nullptr;
     int duration_n = strtol(duration.data(), &char_part_duration, 10);
@@ -714,7 +722,9 @@ void JobsList::removeFinishedJobs() {
     if(this->all_jobs.empty())return;
     while ((stopped = waitpid(-1, nullptr, WNOHANG)) > 0) {
         int job_to_remove = this->pid_to_job_id.find(stopped)->second;
-        delete this->all_jobs.find(job_to_remove)->second.getCommand();
+        if (this->all_jobs.find(job_to_remove) != this->all_jobs.end()){
+            delete this->all_jobs.find(job_to_remove)->second.getCommand();
+        }
         this->all_jobs.erase(job_to_remove);
         this->pid_to_job_id.erase(stopped);
     }
