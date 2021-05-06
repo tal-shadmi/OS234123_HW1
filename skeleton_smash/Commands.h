@@ -224,6 +224,43 @@ public:
 
 
 class SmallShell {
+public:
+    class TimeOutKey {
+    private:
+        pid_t pid;
+        time_t end_time;
+    public:
+        TimeOutKey(pid_t pid, time_t end_time) : pid(pid),end_time(end_time) {};
+        ~TimeOutKey() = default;
+        bool operator<(const TimeOutKey &key) const{
+            if (this->end_time == key.end_time) {
+                return this->pid < key.get_pid();
+            }
+            return this->end_time < key.get_end_time();
+
+        }
+        pid_t get_pid() const{
+            return this->pid;
+        }
+        time_t get_end_time() const{
+            return this->end_time;
+        }
+    };
+    class TimeOutData {
+    private:
+        Command *command;
+        string command_name;
+    public:
+        TimeOutData(Command *command, string &command_name) : command(command),command_name(command_name) {};
+        ~TimeOutData() = default;
+
+        Command* get_command() const{
+            return this->command;
+        }
+        string get_command_name() const{
+            return this->command_name;
+        }
+    };
 private:
     struct time_out_command{
         pid_t pid;
