@@ -98,7 +98,6 @@ Command::Command(const char *cmd_line, bool is_stopped, bool on_timeout, int tim
     this->is_stopped = is_stopped;
     this->on_timeout = on_timeout;
     this->timeout_duration = timeout_duration;
-    delete[] s;
 }
 
 Command::~Command() {
