@@ -398,15 +398,15 @@ void KillCommand::execute() {
     string empty_str("");
     auto signal_n = strtol(signal.data(), &char_part_signal, 10);
     auto element = this->job_list->all_jobs.find(job_id_n);
+    if (string(char_part_signal)!=""||string(char_part_job_id)!="") {
+        perror("smash error: kill: invalid arguments");
+        return;
+    }
     if (job_id_n <= 0 ||element == this->job_list->all_jobs.end()){
         string error_msg = "smash error: kill: job-id ";
         error_msg+=job_id;
         error_msg+= " does not exist";
         perror(error_msg.c_str());
-        return;
-    }
-    if (string(char_part_signal)!=""||string(char_part_job_id)!="") {
-        perror("smash error: kill: invalid arguments");
         return;
     }
     pid_t pid = this->job_list->all_jobs.find(job_id_n)->second.getCommand()->GetPid();
@@ -440,7 +440,7 @@ void ForegroundCommand::execute() {
             return;
         }
         if ((job_id_n <= 0 ||element == this->job_list->all_jobs.end()) && string(char_part_job_id) == ""){
-            string error_msg = "smash error: kill: job-id ";
+            string error_msg = "smash error: fg: job-id ";
             error_msg+=job_id;
             error_msg+= " does not exist";
             perror(error_msg.c_str());
