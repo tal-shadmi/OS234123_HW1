@@ -271,7 +271,7 @@ private:
     pid_t pid;
     string last_path;
     int job_on_foreground;
-    map<time_t, time_out_command> timeout_jobs;
+    map<TimeOutKey, TimeOutData> timeout_jobs;
 
     SmallShell();
 
@@ -299,7 +299,7 @@ public:
     void kill_time_out();
     pid_t get_pid() const;
     JobsList *getJobList();
-    map<time_t, time_out_command> *getTimeoutJobs();
+    map<TimeOutKey, TimeOutData> *getTimeoutJobs();
 };
 
 #endif //SMASH_COMMAND_H_

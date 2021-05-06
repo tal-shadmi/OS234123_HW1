@@ -631,7 +631,7 @@ void TimeoutCommand::execute() {
     // if there are no jobs on timeout already || time to closest alarm is bigger than time of current requested alarm to set:
     // set requested alarm
     if (SmallShell::getInstance().getTimeoutJobs()->empty() ||
-        SmallShell::getInstance().getTimeoutJobs()->begin()->first - time(nullptr) > duration_n){
+        difftime(SmallShell::getInstance().getTimeoutJobs()->begin()->first.get_end_time(), time(nullptr)) > duration_n){
         alarm(duration_n);
     }
     command->execute();
@@ -854,12 +854,13 @@ void SmallShell::add_to_job_list(Command *cmd) {
 }
 
 void SmallShell::add_to_time_out(Command *cmd, time_t duration) {
-    time_out_command toc;
-    toc.command_name+= cmd->GetCommandName();
-    toc.command_name+=" timed out!";
     time_t expected_finish_time = duration + cmd->GetStartingTime();
-    toc.pid = cmd->GetPid();
-    this->timeout_jobs.insert(pair<time_t,time_out_command>(expected_finish_time,toc));
+    TimeOutKey key(cmd->GetPid(), expected_finish_time);
+    string cmd_name;
+    cmd_name += cmd->GetCommandName();
+    cmd_name += " timed out!";
+    TimeOutData data(cmd, cmd_name);
+    this->timeout_jobs.insert(pair<SmallShell::TimeOutKey,SmallShell::TimeOutData>(key, data));
 }
 
 void SmallShell::set_foreground_job(int job_id) {
@@ -870,7 +871,7 @@ int SmallShell::getForegroundJob() {
     return this->job_on_foreground;
 }
 
-map<time_t, SmallShell::time_out_command> *SmallShell::getTimeoutJobs() {
+map<SmallShell::TimeOutKey, SmallShell::TimeOutData> *SmallShell::getTimeoutJobs() {
     return &this->timeout_jobs;
 }
 
@@ -906,20 +907,29 @@ void SmallShell::kill_time_out() {
     if (this->timeout_jobs.empty()){
         return;
     }
-    pid_t to_pid = this->timeout_jobs.begin()->second.pid;
+    pid_t to_pid = this->timeout_jobs.begin()->first.get_pid();
     this->jobs_list->removeFinishedJobs();
-    if (this->getJobList()->pid_to_job_id.find(to_pid) != this->getJobList()->pid_to_job_id.end()){
-        if (kill(to_pid, SIGKILL) == -1){
-            perror("smash error: kill failed");
-            return;
+    auto it = this->timeout_jobs.begin();
+    time_t current_time = time(nullptr);
+    while (it != this->timeout_jobs.end()) {
+        if (it->first.get_end_time() <= current_time) {
+            if (this->getJobList()->pid_to_job_id.find(to_pid) != this->getJobList()->pid_to_job_id.end()){
+                if (kill(to_pid, SIGKILL) == -1){
+                    perror("smash error: kill failed");
+                    return;
+                }
+                cout << "smash: " << it->second.get_command_name() << endl;
+                this->jobs_list->removeFinishedJobs();
+            }
+            it++;
+        } else {
+            break;
         }
-        cout << "smash: " << this->timeout_jobs.begin()->second.command_name << endl;
-        this->jobs_list->removeFinishedJobs();
     }
-    this->timeout_jobs.erase(this->timeout_jobs.begin());
+    this->timeout_jobs.erase(this->timeout_jobs.begin(), it);
     // if timeout job list is still not empty we will set an alarm to the next timeout job
     if (!this->timeout_jobs.empty()){
-        alarm(this->timeout_jobs.begin()->first - time(nullptr));
+        alarm((int)difftime(this->timeout_jobs.begin()->first.get_end_time(), time(nullptr)));
     }
 }
 
