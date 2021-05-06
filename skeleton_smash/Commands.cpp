@@ -398,7 +398,7 @@ void KillCommand::execute() {
     string empty_str("");
     auto signal_n = strtol(signal.data(), &char_part_signal, 10);
     auto element = this->job_list->all_jobs.find(job_id_n);
-    if (string(char_part_signal)!=""||string(char_part_job_id)!="") {
+    if (string(char_part_signal) != "" || string(char_part_job_id) != "" || signal_n > 0) {
         perror("smash error: kill: invalid arguments");
         return;
     }
