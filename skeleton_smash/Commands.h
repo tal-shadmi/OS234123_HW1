@@ -53,7 +53,8 @@ public:
     void SetOnTimeout();
     // added SetTimeoutDuration function to set the duration until timeout for the command
     void SetTimeoutDuration(int duration);
-
+    // added function to set command name
+    void SetCommandName(char *cmd_line);
 };
 
 class BuiltInCommand : public Command {

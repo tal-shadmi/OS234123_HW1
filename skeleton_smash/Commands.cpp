@@ -170,6 +170,10 @@ void Command::SetTimeoutDuration(int duration) {
     this->timeout_duration = duration;
 }
 
+void Command::SetCommandName(char *cmd_line) {
+    strcpy(this->command_name, cmd_line);
+}
+
 /**
  * implementation for PipeCommand commands
  */
@@ -345,7 +349,7 @@ void ChangeDirCommand::execute() {
         *this->plastPwd = cwd ;
     } else if (string(this->command_parts[1]) == "..") {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
-        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH)){
+        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH) == nullptr){
             perror("smash error: getcwd failed");
             return;
         }
@@ -360,7 +364,7 @@ void ChangeDirCommand::execute() {
         *this->plastPwd = cwd;
     } else {
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
-        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH)){
+        if (getcwd(cwd, COMMAND_ARGS_MAX_LENGTH) == nullptr){
             perror("smash error: getcwd failed");
             return;
         }
@@ -594,7 +598,7 @@ void ExternalCommand::execute() {
         if (!this->is_background){
             // set smash foreground job to this job and wait
             SmallShell::getInstance().set_foreground_job(SmallShell::getInstance().getJobList()->pid_to_job_id.find(pid)->second);
-            waitpid(pid, nullptr, WUNTRACED );
+            waitpid(pid, nullptr, WUNTRACED);
         }
     }
 }
@@ -607,7 +611,12 @@ TimeoutCommand::TimeoutCommand(const char *cmd_line) : Command(cmd_line) {};
 
 void TimeoutCommand::execute() {
     string duration(this->command_parts[1]);
-    int duration_n = strtol(duration.data(), nullptr, 10);
+    char *char_part_duration = nullptr;
+    int duration_n = strtol(duration.data(), &char_part_duration, 10);
+    if (string(char_part_duration) != ""){
+        perror("smash error: timeout: invalid arguments");
+        return;
+    }
     string cmd(this->command_name);
     string sub_cmd(this->command_parts[2]);
     int pos = cmd.find(sub_cmd);
@@ -616,6 +625,7 @@ void TimeoutCommand::execute() {
     // the command now holds the information that an alarm has been set for it and also how much time the alarm has been set for:
     command->SetOnTimeout();
     command->SetTimeoutDuration(duration_n);
+    command->SetCommandName(this->GetCommandName());
     if (!command) return;
     SmallShell::getInstance().getJobList()->removeFinishedJobs();
     // if there are no jobs on timeout already || time to closest alarm is bigger than time of current requested alarm to set:
@@ -845,9 +855,6 @@ void SmallShell::add_to_job_list(Command *cmd) {
 
 void SmallShell::add_to_time_out(Command *cmd, time_t duration) {
     time_out_command toc;
-    toc.command_name = "timeout ";
-    toc.command_name+= to_string(duration);
-    toc.command_name+= " ";
     toc.command_name+= cmd->GetCommandName();
     toc.command_name+=" timed out!";
     time_t expected_finish_time = duration + cmd->GetStartingTime();
@@ -900,12 +907,15 @@ void SmallShell::kill_time_out() {
         return;
     }
     pid_t to_pid = this->timeout_jobs.begin()->second.pid;
-    if (kill(to_pid, SIGKILL) == -1){
-        perror("smash error: kill failed");
-        return;
-    }
-    cout << "smash: " << this->timeout_jobs.begin()->second.command_name << endl;
     this->jobs_list->removeFinishedJobs();
+    if (this->getJobList()->pid_to_job_id.find(to_pid) != this->getJobList()->pid_to_job_id.end()){
+        if (kill(to_pid, SIGKILL) == -1){
+            perror("smash error: kill failed");
+            return;
+        }
+        cout << "smash: " << this->timeout_jobs.begin()->second.command_name << endl;
+        this->jobs_list->removeFinishedJobs();
+    }
     this->timeout_jobs.erase(this->timeout_jobs.begin());
     // if timeout job list is still not empty we will set an alarm to the next timeout job
     if (!this->timeout_jobs.empty()){
