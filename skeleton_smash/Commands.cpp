@@ -332,7 +332,8 @@ void ChangeDirCommand::execute() {
         return;
     } else if (string(this->command_parts[1]) == "-") {
         if (*this->plastPwd == nullptr) {
-            perror("smash error: cd: OLDPWD not set\n");
+            fprintf(stderr, "smash error: cd: OLDPWD not set\n");
+//            perror("smash error: cd: OLDPWD not set\n");
             return;
         }
         char *cwd = new char[COMMAND_ARGS_MAX_LENGTH];
@@ -500,6 +501,7 @@ void BackgroundCommand::execute() {
         }
         JobsList::JobEntry job_entry = job_it->second;
         pid = job_it->second.getCommand()->GetPid();
+        cout << job_it->second.getCommand()->GetCommandName() << " : " << job_it->second.getCommand()->GetPid() << endl;
     } else {
         JobsList::JobEntry * job_entry = this->job_list->getLastStoppedJob(&job_id_n);
         if (job_entry == nullptr) {
@@ -507,6 +509,7 @@ void BackgroundCommand::execute() {
             return;
         }
         pid = job_entry->getCommand()->GetPid();
+        cout << job_entry->getCommand()->GetCommandName() << " : " << job_entry->getCommand()->GetPid() << endl;
     }
     this->job_list->stopped_jobs.remove(pid);
     this->job_list->all_jobs.find(job_id_n)->second.getCommand()->SetIsStopped(false);
@@ -696,7 +699,7 @@ void JobsList::printJobsList() {
              element.second.getCommand()->GetPid() << " "
              << difftime(time(nullptr), element.second.getCommand()->GetStartingTime()) << " secs";
         if (element.second.getCommand()->IsStopped()) {
-            cout << "(stopped)";
+            cout << " (stopped)";
         }
         cout << endl;
     }
